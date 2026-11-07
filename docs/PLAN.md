@@ -256,7 +256,8 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 **Steps**
 
-- [ ] Add the Release stage to the central `Jenkinsfile` with `when { branch 'main' }`.
+- [x] Add the Release stage to the central `Jenkinsfile` with `when { branch 'main' }`.
+- [x] `Version` stage on every build, right after Secrets (added 2026-11-07: with the check only in Release, a PR with a bad `VERSION` built green, could merge, and then turned `main` red).
 - [ ] Jenkins pushes tags over HTTPS with `github-crendentials`; give the token Contents read/write on the role repos.
 - [ ] GitHub branch ruleset on `main`: pull request required, check `continuous-integration/jenkins/pr-head` required with "branches up to date before merging", no force push, no deletion, no bypass. **Decided 2026-11-07:** `pr-head` + up to date, not `pr-merge`: no job change, and an up-to-date PR head is exactly what gets merged. Not `branch`: branches with an open PR are not built as branches (Batch 3 drill 2 note).
 - [ ] `ansible-pipeline` `main`: block force push and deletion (added 2026-11-07: Batch 3 drill 8 showed whoever pushes there controls CI). Direct pushes stay allowed.
@@ -267,7 +268,7 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 - The `main` build is green and tag `v0.1.0` appears on GitHub.
 - Re-running the same `main` build skips the release without failing; the tag is not moved.
-- `VERSION` set to `v1` makes the Release stage red.
+- A pull request with `VERSION` set to `v1` goes red at the Version stage and cannot be merged.
 - A `main` build that fails any gate creates no tag.
 - A red pull request cannot be merged, even by you; a direct push to `main` is refused.
 - Moving or deleting `v0.1.0` is refused.

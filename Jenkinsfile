@@ -3,7 +3,7 @@
 // No repo is named here: declarative pipelines run `checkout scm` before the first stage ("Declarative: Checkout SCM"),
 // and Jenkins fills `scm` from the job: the role repo, branch and commit being built. That is what makes this file reusable.
 //
-// Gates, cheapest first: Secrets → YAML lint → Ansible lint → Security → Molecule; then Release, on main only.
+// Gates, cheapest first: Secrets → Version → YAML lint → Ansible lint → Security → Molecule; then Release, on main only.
 // Tool configs: a role's own .yamllint, .ansible-lint, .gitleaks.toml or .checkov.yml is picked up from its root;
 // without one, each tool's built-in defaults apply. Collections come from the role's requirements.yml (Molecule).
 pipeline {
@@ -36,6 +36,17 @@ pipeline {
           mkdir -p reports
           gitleaks version
           gitleaks git -v --redact --no-banner --log-opts=HEAD --report-format sarif --report-path reports/gitleaks.sarif .
+        '''
+      }
+    }
+
+    // Every build checks VERSION, so a bad one fails its pull request, not main after the merge.
+    stage('Version') {
+      steps {
+        sh '''
+          V=$(cat VERSION)
+          echo "$V" | grep -qxE '[0-9]+[.][0-9]+[.][0-9]+' || { echo "VERSION must be X.Y.Z, got '$V'"; exit 1; }
+          echo "VERSION $V"
         '''
       }
     }
@@ -96,8 +107,7 @@ pipeline {
         withCredentials([usernamePassword(credentialsId: 'github-crendentials',
                                           usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
           sh '''
-            V=$(cat VERSION)
-            echo "$V" | grep -qxE '[0-9]+[.][0-9]+[.][0-9]+' || { echo "VERSION must be X.Y.Z, got '$V'"; exit 1; }
+            V=$(cat VERSION)        # format checked in the Version stage
             # Token read from the environment by git, never put in a URL or the log
             H='!f() { echo "username=$GIT_USER"; echo "password=$GIT_TOKEN"; }; f'
             if git -c credential.helper= -c credential.helper="$H" ls-remote --exit-code --tags origin "refs/tags/v$V" >/dev/null; then

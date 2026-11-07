@@ -85,3 +85,19 @@ exit=0
 **Found before it happened** (Batch 2, 2026-11-07): the podman driver sets the container's hostname to its name (`hostname: item.hostname | default(item.name)` in its `create.yml`), and Linux hostnames are limited to 64 characters. A run id built from `BUILD_TAG` (`jenkins-role-ci-ansible-role-webserver-feature-2fwebserver-role-12`) makes the name about 81 characters.
 
 **Fix:** the pipeline sets `MOLECULE_RUN_ID = "e${EXECUTOR_NUMBER}"`, short and unique among builds running at once on the node.
+
+## Release stage: tag push 403 "Permission … denied to bunnywkwk"
+
+**Error** (`role-ci/ansible-role-webserver`, `main` #4, 2026-11-07, first build with the Release stage)
+
+```text
++ git … push origin refs/tags/v0.1.0
+remote: Permission to bunnywkwk/ansible-role-webserver.git denied to bunnywkwk.
+fatal: unable to access 'https://github.com/bunnywkwk/ansible-role-webserver.git/': The requested URL returned error: 403
+```
+
+**Cause:** GitHub accepted the login (the helper sent `bunnywkwk` and the token) but the token in `github-crendentials` had no write access to the repo's contents. A read-only token can still `ls-remote` a public repo, so the check before the push passed.
+
+**Fix:** token `jenkins-laptop` → Repository permissions → Contents = Read and write → Update; re-run the `main` build. No tag was created on GitHub by the failed build.
+
+**Prevention:** setup step 3 lists Contents read and write from Batch 4 on.

@@ -20,7 +20,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 
 1. **Create public repo `ansible-pipeline`, all "Initialize" boxes unchecked.** It holds the central `Jenkinsfile`, pinned tool lists and docs; empty so the first push is clean.
 2. **Create public repo `ansible-role-webserver`, same settings.** It holds role code only, never pipeline code.
-3. **Create a fine-grained token** (Settings → Developer settings → Fine-grained tokens): Repository access = *Only select repositories* with each role repo; permissions Contents read, Metadata read, Pull requests read, **Commit statuses read and write**. Jenkins reads code with it and posts the ✓/✗; listing only role repos keeps it from touching anything else. `ansible-pipeline` does not need to be listed: any token can read a public repo.
+3. **Create a fine-grained token** (Settings → Developer settings → Fine-grained tokens): Repository access = *Only select repositories* with each role repo; permissions Contents **read and write** (write from Batch 4: Jenkins pushes release tags), Metadata read, Pull requests read, **Commit statuses read and write**. Jenkins reads code with it and posts the ✓/✗; listing only role repos keeps it from touching anything else. `ansible-pipeline` does not need to be listed: any token can read a public repo.
 
 ### Part 2 — Build node (run with sudo)
 

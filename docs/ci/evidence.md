@@ -156,3 +156,32 @@ Each drill: one bad commit on branch `drill/NN-name` (from `feature/webserver-ro
 | Drills 1–8 have real results | Passed (table above); drill 9 dropped at your request |
 | Every gap fixed and proven by re-pushing the same commit | Passed: one gap (drill 02), fixed in `a72181f`, re-run red at Ansible lint |
 | Drill branches | Kept on GitHub as evidence: `drill/01-yaml-indent` … `drill/08-own-jenkinsfile` |
+
+## Batch 4 — Release and merge gate (2026-11-07)
+
+Central `Jenkinsfile` with the Release stage: `f7c8d00`. Before pushing: `pipeline-model-converter/validate` → `Jenkinsfile successfully validated.`; the Release shell run against a local bare repo: new tag pushed (rc 0), second run `release skipped` (rc 0), `VERSION` = `v1` → `VERSION must be X.Y.Z, got 'v1'` (rc 1).
+
+Rulesets, read back from the GitHub API (`/rules/branches/main`, `/rulesets/<id>`):
+
+```text
+ansible-role-webserver  main          active  ~DEFAULT_BRANCH  deletion, non_fast_forward, pull_request (0 approvals),
+                                                               required_status_checks: continuous-integration/jenkins/pr-head, strict (up to date) = True
+ansible-role-webserver  release-tags  active  refs/tags/v*     deletion, non_fast_forward, update   (creation allowed)
+ansible-pipeline        main          active  default branch   deletion, non_fast_forward
+```
+
+Bypass lists are not visible through the public API; set empty in the UI.
+
+**First release.** PR #1 merged → `main` #4 (webhook): all 5 gates green, Release red with a 403 on the tag push (token had no Contents write; see troubleshooting), no tag created. After the token fix, `main` #5 (Build Now) on the same merge commit `ce69ec3`:
+
+```text
+Passed: 0 failure(s), 0 warning(s) … Profile 'production' was required, and it passed.
+converge changed=5, idempotence changed=0, verify failed=0
+ * [new tag]         v0.1.0 -> v0.1.0
+Released v0.1.0 at ce69ec3
+$ git ls-remote --tags https://github.com/bunnywkwk/ansible-role-webserver.git
+3386bee…  refs/tags/v0.1.0
+ce69ec3…  refs/tags/v0.1.0^{}      (annotated tag → the tested merge commit)
+```
+
+**Gap seen live: bad `VERSION` reached `main`.** Before the Version stage was pushed, PR #2 (`check/bad-version`, `VERSION` = `v1`) was built by the old pipeline: Release skipped (not `main`), `Finished: SUCCESS`, so the ruleset allowed the merge. `main` #6 on merge commit `5817e41` then failed at Release with `VERSION must be X.Y.Z, got 'v1'`; no tag was created (`v0.1.0` unchanged). Fix: the `Version` stage on every build (see PLAN Batch 4), then revert PR #2 through a pull request.
