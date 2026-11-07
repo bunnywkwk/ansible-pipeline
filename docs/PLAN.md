@@ -11,7 +11,7 @@ A lab of a full Ansible role delivery pipeline on Jenkins, built **CI first**. C
 
 **Changed 2026-11-07** from the first version of this plan:
 
-- **CI moved first.** Lab VMs moved from Batch 0 to Batch 6, because only CD needs them.
+- **CI moved first.** Lab VMs moved from Batch 0 to Batch 6, because only CD needs them. (Changed again 2026-11-07, at your request: CI needs a VM too, for the PR test in Batch 4b, so VM creation starts there.)
 - **Central pipeline replaces the shared library.** A role repo has nothing to edit, so the gates cannot be weakened from a role branch.
 - **GitHub and the Jenkins on this workstation replace Proxmox.**
 - **Gate method taken from the earlier `chrome_cis` CI work** (Obsidian vault `ci-pipeline/ansible-ci-plan.md`): break it on purpose, and record what happens. The vault notes stay as they are; this plan continues the work.
@@ -65,6 +65,8 @@ CD · Jenkins cd/ · results on the dashboard
    job form)           tests)              approver)
 ```
 
+Batch 4b adds a **VM test** to CI after Molecule: the pull request's role runs on a short-lived RHEL 9 VM, then the VM is destroyed.
+
 Role code is tested once, in CI. CD only deploys tested tags and never re-runs role tests.
 
 ## Progress tracker
@@ -77,7 +79,8 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Done (2026-11-07) |
 | 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Done (2026-11-07) |
 | 3 — Gate drills | CI | Every gate catches a real bad commit | Drill table with real output in `docs/ci/evidence.md` | Done (2026-11-07) |
-| 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | In progress |
+| 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
+| 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Not started (next, from 2026-11-08) |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Not started |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
@@ -258,11 +261,11 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 - [x] Add the Release stage to the central `Jenkinsfile` with `when { branch 'main' }`.
 - [x] `Version` stage on every build, right after Secrets (added 2026-11-07: with the check only in Release, a PR with a bad `VERSION` built green, could merge, and then turned `main` red).
-- [ ] Jenkins pushes tags over HTTPS with `github-crendentials`; give the token Contents read/write on the role repos.
-- [ ] GitHub branch ruleset on `main`: pull request required, check `continuous-integration/jenkins/pr-head` required with "branches up to date before merging", no force push, no deletion, no bypass. **Decided 2026-11-07:** `pr-head` + up to date, not `pr-merge`: no job change, and an up-to-date PR head is exactly what gets merged. Not `branch`: branches with an open PR are not built as branches (Batch 3 drill 2 note).
-- [ ] `ansible-pipeline` `main`: block force push and deletion (added 2026-11-07: Batch 3 drill 8 showed whoever pushes there controls CI). Direct pushes stay allowed.
-- [ ] GitHub tag ruleset on `v*`: block update and deletion. Creation stays allowed: the token acts as you, so GitHub cannot tell a Jenkins tag from a hand-made one (changed 2026-11-07: HTTPS token instead of a deploy key, at your request).
-- [ ] Merge the Batch 1 role to `main` with `VERSION` = `0.1.0`.
+- [x] Jenkins pushes tags over HTTPS with `github-crendentials`; give the token Contents read/write on the role repos.
+- [x] GitHub branch ruleset on `main`: pull request required, check `continuous-integration/jenkins/pr-head` required with "branches up to date before merging", no force push, no deletion, no bypass. **Decided 2026-11-07:** `pr-head` + up to date, not `pr-merge`: no job change, and an up-to-date PR head is exactly what gets merged. Not `branch`: branches with an open PR are not built as branches (Batch 3 drill 2 note).
+- [x] `ansible-pipeline` `main`: block force push and deletion (added 2026-11-07: Batch 3 drill 8 showed whoever pushes there controls CI). Direct pushes stay allowed.
+- [x] GitHub tag ruleset on `v*`: block update and deletion. Creation stays allowed: the token acts as you, so GitHub cannot tell a Jenkins tag from a hand-made one (changed 2026-11-07: HTTPS token instead of a deploy key, at your request).
+- [x] Merge the Batch 1 role to `main` with `VERSION` = `0.1.0`.
 
 **Done when**
 
@@ -274,6 +277,30 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 - Moving or deleting `v0.1.0` is refused.
 - A small playbook installs the role from `v0.1.0` through `requirements.yml`: the release is usable.
 
+## Batch 4b — PR test on a lab VM
+
+**Goal:** a pull request is merged only after its role also passed on a real RHEL 9 VM. The `ubi9-init` container cannot test what a real host has: firewalld, SELinux enforcing, a real boot and systemd. Added 2026-11-07 at your request.
+
+**How it works (proposal, to settle at the start of the batch):**
+
+- Same playbooks, second place to run them: a Molecule scenario `vm` next to `default`, reusing `converge.yml` and `verify.yml`, with `webserver_manage_firewall: true`.
+- The scenario's create and destroy steps start and remove **one throwaway VM** from the golden image on this workstation's KVM (Terraform with the libvirt provider, run as `jenkins`; already in the `libvirt` group). This is the VM code CD reuses in Batch 6.
+- `verify.yml` also checks what only a VM has: the firewalld port is open, SELinux is enforcing.
+- Runs after the container test, on pull requests and `main` only, so a quick mistake still fails in seconds and drill branches do not start VMs.
+- The VM is destroyed at the end of every build, also after a failure or an abort (`post { always }`).
+
+**Settle first**
+
+- Where the RHEL 9 golden image is, and how the VM gets packages (subscription or a local repo); without repos, `dnf install nginx` fails.
+- VM size, and how the build reaches it (SSH key in Jenkins credentials).
+- Name of the new required check, or whether the VM test is part of the existing `pr-head` result.
+
+**Done when**
+
+- A pull request shows the VM test green, and the merge rule needs it.
+- A change that works in the container but breaks on a real host (for example a firewalld port that is never opened) is red only in the VM test.
+- No VM is left after a green, a red and an aborted build.
+
 ## Batch 5 — Any role, zero pipeline setup
 
 **Goal:** a new role gets the full CI without touching the pipeline, and the CI is documented well enough to use without help.
@@ -283,7 +310,8 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 - [ ] Mark `ansible-role-webserver` as a GitHub template repository.
 - [ ] Replace the per-role job with a GitHub organization folder in `role-ci/` that discovers repos named `ansible-role-*` with the same remote-Jenkinsfile settings. If the plugin does not support organization folders, keep one multibranch job per role and document the one-minute setup.
 - [ ] Create a second role from the template (a small one, such as `ansible-role-motd`); change only role code.
-- [ ] Docs in `ansible-pipeline`: `README.md` (what it is, how it works), `docs/ci/gates.md` (each gate: what it catches, how to fix a failure), `docs/ci/onboarding-a-role.md`, `docs/ci/troubleshooting.md`. Role README in the template.
+- [x] Docs in `ansible-pipeline`: `README.md` (what it is, diagram, gates, releases, limits), `docs/ci/onboarding-a-role.md`, `docs/ci/troubleshooting.md` (written 2026-11-07, before the second role; changed: the gate table lives in the README instead of a separate `docs/ci/gates.md`).
+- [ ] Follow `docs/ci/onboarding-a-role.md` for the second role and fix what it gets wrong. Role README in the template.
 
 **Done when**
 
@@ -295,7 +323,7 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 ## Batch 6 — Lab VMs with Terraform (CD starts here)
 
-**Goal:** Terraform, run only through Jenkins, creates lab VMs from the golden image on the local KVM on demand: one production VM, and a staging VM only during a deploy.
+**Goal:** Terraform, run only through Jenkins, creates lab VMs from the golden image on the local KVM on demand: one production VM, and a staging VM only during a deploy. Reuses the VM code from Batch 4b.
 
 | Environment | VMs | Lifetime |
 | --- | --- | --- |

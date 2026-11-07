@@ -160,6 +160,16 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 32. **Break each gate once** on its own branch `drill/NN-name` from the feature branch, push, and record predicted vs real in [evidence.md](evidence.md). A gate that stays green is a gap: fix it on the feature branch, rebase the drill branch, push again.
 33. **Keep the drill branches** on GitHub as evidence; they stay red in Jenkins, which is the point.
 
+## Batch 4 — Release and merge gate
+
+34. **Push the `Version` and `Release` stages** in `Jenkinsfile`: Version checks `VERSION` is `X.Y.Z` on every build; Release, on `main` only, tags the tested commit `v<VERSION>` unless the tag exists.
+35. **Give the token Contents read and write** (step 3): Jenkins pushes the tag with it; without write, the push fails with 403.
+36. **Ruleset on the role's `main`** (Settings → Rules → Rulesets → New branch ruleset, Active, no bypass, default branch): restrict deletions, require a pull request, require status check `continuous-integration/jenkins/pr-head` with branches up to date, block force pushes.
+37. **Ruleset on the role's tags** (New tag ruleset, Active, pattern `v*`): restrict updates and deletions only; creation must stay allowed for Jenkins.
+38. **Ruleset on `ansible-pipeline` `main`:** restrict deletions and block force pushes; direct pushes stay allowed.
+39. **Merge the first pull request:** the `main` build ends with `Released v0.1.0 at <commit>`.
+40. **To release later:** change `VERSION` in a pull request; a merge without it prints `release skipped`.
+
 ## Adding another role repo (until Batch 5 automates it)
 
-Add the repo to the token's repository access (step 3), create its multibranch job (step 16), add the webhook (step 19). The pipeline itself needs no change.
+Add the repo to the token's repository access (step 3), create its multibranch job (step 16), add the webhook (step 19) and the rulesets (steps 36–37). The pipeline itself needs no change. What the role repo itself needs: [onboarding-a-role.md](onboarding-a-role.md).

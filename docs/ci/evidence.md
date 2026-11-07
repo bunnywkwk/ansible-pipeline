@@ -185,3 +185,26 @@ ce69ec3…  refs/tags/v0.1.0^{}      (annotated tag → the tested merge commit)
 ```
 
 **Gap seen live: bad `VERSION` reached `main`.** Before the Version stage was pushed, PR #2 (`check/bad-version`, `VERSION` = `v1`) was built by the old pipeline: Release skipped (not `main`), `Finished: SUCCESS`, so the ruleset allowed the merge. `main` #6 on merge commit `5817e41` then failed at Release with `VERSION must be X.Y.Z, got 'v1'`; no tag was created (`v0.1.0` unchanged). Fix: the `Version` stage on every build (see PLAN Batch 4), then revert PR #2 through a pull request.
+
+**Recovery and checks with the Version stage** (`ansible-pipeline` `fbfcd21`): revert PR #3 built `PR-3` with a `Version` stage (`VERSION 0.1.0`), merged; `main` #7 on `4fdd2ae`: `Tag v0.1.0 already exists: release skipped.`, `Finished: SUCCESS`; tags unchanged.
+
+**Install from the tag** (workstation, scratch folder and empty `ANSIBLE_HOME`, nothing run on a host):
+
+```text
+$ ansible-galaxy role install -r requirements.yml -p roles     # src: the role's git URL, scm: git, version: v0.1.0
+- bunnywkwk.webserver (v0.1.0) was installed successfully
+$ ansible-galaxy collection install -r roles/bunnywkwk.webserver/requirements.yml -p collections
+ansible.posix:2.2.2 was installed successfully
+$ ansible-playbook -i localhost, --syntax-check site.yml       # roles: [bunnywkwk.webserver]
+playbook: site.yml
+```
+
+| Done-when check | Result |
+| --- | --- |
+| Green `main` creates tag `v0.1.0` | Passed: `main` #5, tag → `ce69ec3` |
+| Re-run skips, tag not moved | Passed: `main` #7, release skipped, tag unchanged |
+| PR with `VERSION` = `v1` red at Version, cannot merge | Not run, at your request (PR #2 ran on the old pipeline and merged: the gap above). The Version stage itself was proven locally and runs on every build (`PR-3`, `main` #7) |
+| `main` build failing a gate creates no tag | Not run directly: red code cannot reach `main` now; drills show a failed stage skips every later stage. `main` #4 and #6 failed in Release and created no tag |
+| Red PR cannot be merged; direct push to `main` refused | Direct push: refused (seen by you; message not captured). Red PR: not run, at your request; `pr-head` is a required check in the ruleset (read back above) |
+| Moving or deleting `v0.1.0` refused | Not run, at your request; ruleset `release-tags` read back with deletion, update, non_fast_forward |
+| Release usable through `requirements.yml` | Passed (above); a real run on a host comes in the CD batches |

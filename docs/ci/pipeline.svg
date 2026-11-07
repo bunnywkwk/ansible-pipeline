@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" role="img" aria-label="Role CI: a push or pull request in a role repo reaches Jenkins through smee; Jenkins loads the one Jenkinsfile from ansible-pipeline, checks out the role commit, and runs six stages cheapest first. Any red stage skips the rest and posts a red status; all green posts a green status, and on main the Release stage adds a version tag that is never moved." font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#24292f"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#cf222e"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1a7f37"/></marker>
+  </defs>
+
+  <!-- own background: the file is shown as an image, so it cannot follow GitHub's light or dark theme -->
+  <rect x="0.5" y="0.5" width="999" height="419" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+
+  <g fill="none" stroke="#24292f" stroke-width="1.5">
+    <!-- top row: trigger and the two sources -->
+    <rect x="20" y="30" width="220" height="64" rx="6"/>
+    <rect x="310" y="30" width="150" height="64" rx="6"/>
+    <rect x="530" y="30" width="220" height="64" rx="6" stroke-width="2.5"/>
+    <rect x="820" y="30" width="160" height="64" rx="6"/>
+    <!-- stages -->
+    <rect x="20" y="190" width="118" height="60" rx="6"/>
+    <rect x="156" y="190" width="118" height="60" rx="6"/>
+    <rect x="292" y="190" width="118" height="60" rx="6"/>
+    <rect x="428" y="190" width="118" height="60" rx="6"/>
+    <rect x="564" y="190" width="118" height="60" rx="6"/>
+    <rect x="700" y="190" width="118" height="60" rx="6"/>
+    <rect x="850" y="190" width="130" height="60" rx="6" stroke-dasharray="6 4"/>
+    <!-- outputs -->
+    <rect x="300" y="340" width="340" height="60" rx="6"/>
+    <rect x="850" y="330" width="130" height="70" rx="6"/>
+  </g>
+
+  <!-- arrows: trigger path, recipe, code, run -->
+  <g fill="none" stroke="#24292f" stroke-width="1.5" marker-end="url(#a)">
+    <line x1="240" y1="62" x2="308" y2="62"/>
+    <line x1="460" y1="62" x2="528" y2="62"/>
+    <line x1="820" y1="62" x2="752" y2="62"/>
+    <polyline points="130,94 130,128 590,128 590,96"/>
+    <polyline points="690,94 690,160 79,160 79,188"/>
+    <line x1="138" y1="220" x2="154" y2="220"/>
+    <line x1="274" y1="220" x2="290" y2="220"/>
+    <line x1="410" y1="220" x2="426" y2="220"/>
+    <line x1="546" y1="220" x2="562" y2="220"/>
+    <line x1="682" y1="220" x2="698" y2="220"/>
+    <line x1="915" y1="250" x2="915" y2="328"/>
+  </g>
+
+  <!-- red path: any stage fails -->
+  <g fill="none" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="5 4">
+    <line x1="79" y1="250" x2="79" y2="285"/>
+    <line x1="215" y1="250" x2="215" y2="285"/>
+    <line x1="351" y1="250" x2="351" y2="285"/>
+    <line x1="487" y1="250" x2="487" y2="285"/>
+    <line x1="623" y1="250" x2="623" y2="285"/>
+    <line x1="759" y1="250" x2="759" y2="285"/>
+    <line x1="79" y1="285" x2="759" y2="285"/>
+    <line x1="380" y1="285" x2="380" y2="338" marker-end="url(#r)"/>
+  </g>
+
+  <!-- green path: all stages pass -->
+  <g fill="none" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#g)">
+    <line x1="818" y1="220" x2="848" y2="220"/>
+    <polyline points="834,220 834,370 642,370"/>
+  </g>
+
+  <!-- box text -->
+  <g fill="#24292f" text-anchor="middle">
+    <text x="130" y="57" font-size="13" font-weight="600">ansible-role-&lt;name&gt;</text>
+    <text x="130" y="76" font-size="11">role code + meta/main.yml</text>
+    <text x="385" y="57" font-size="13" font-weight="600">smee.io</text>
+    <text x="385" y="76" font-size="11">webhook relay</text>
+    <text x="640" y="57" font-size="13" font-weight="600">Jenkins role-ci/&lt;name&gt;</text>
+    <text x="640" y="76" font-size="11">builds branches with meta/main.yml</text>
+    <text x="900" y="57" font-size="13" font-weight="600">ansible-pipeline</text>
+    <text x="900" y="76" font-size="11">the one Jenkinsfile</text>
+
+    <text x="79" y="216" font-size="13" font-weight="600">Secrets</text>
+    <text x="79" y="234" font-size="11">gitleaks, history</text>
+    <text x="215" y="216" font-size="13" font-weight="600">Version</text>
+    <text x="215" y="234" font-size="11">VERSION is X.Y.Z</text>
+    <text x="351" y="216" font-size="13" font-weight="600">YAML lint</text>
+    <text x="351" y="234" font-size="11">yamllint</text>
+    <text x="487" y="216" font-size="13" font-weight="600">Ansible lint</text>
+    <text x="487" y="234" font-size="11">production profile</text>
+    <text x="623" y="216" font-size="13" font-weight="600">Security</text>
+    <text x="623" y="234" font-size="11">Checkov</text>
+    <text x="759" y="216" font-size="13" font-weight="600">Molecule</text>
+    <text x="759" y="234" font-size="11">ubi9-init container</text>
+    <text x="915" y="216" font-size="13" font-weight="600">Release</text>
+    <text x="915" y="234" font-size="11">main only</text>
+
+    <text x="470" y="366" font-size="13" font-weight="600">Status on the GitHub commit</text>
+    <text x="470" y="385" font-size="11">merge to main needs a green pr-head check</text>
+    <text x="915" y="357" font-size="13" font-weight="600">tag vX.Y.Z</text>
+    <text x="915" y="375" font-size="11">never moved</text>
+    <text x="915" y="391" font-size="11">what CD deploys</text>
+  </g>
+
+  <!-- arrow labels -->
+  <g font-size="11" fill="#57606a">
+    <text x="274" y="54" text-anchor="middle">push / PR</text>
+    <text x="494" y="54" text-anchor="middle">forwards</text>
+    <text x="786" y="54" text-anchor="middle">1. recipe</text>
+    <text x="360" y="122" text-anchor="middle">2. checkout: the role commit under test</text>
+    <text x="385" y="154" text-anchor="middle">3. run the stages on node "ansible", cheapest first</text>
+    <text x="925" y="295" text-anchor="start">new</text>
+    <text x="925" y="308" text-anchor="start">VERSION</text>
+  </g>
+  <text x="372" y="318" font-size="11" fill="#cf222e" text-anchor="end">any stage red: later stages skipped, ✗</text>
+  <text x="740" y="362" font-size="11" fill="#1a7f37" text-anchor="middle">all green ✓</text>
+</svg>
