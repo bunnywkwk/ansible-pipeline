@@ -1,0 +1,10 @@
+# Role CI tools for the /opt/ci virtualenv, on Python 3.11 (Fedora package python3.11).
+# ansible-core 2.16 and molecule 26.9 match the stack already practiced in ~/molecule-practice/.venv.
+# shortcut: ansible-core 2.16 is past its upstream end of life; moving up means ansible-core 2.20+ on Python 3.12+.
+# Install: python3.11 -m venv /opt/ci && /opt/ci/bin/pip install -r ci/requirements-tools.txt
+# shortcut: only top-level packages are pinned, so dependencies can drift; add a pip freeze constraints file if a build changes without a commit.
+ansible-core==2.16.20
+ansible-lint==26.11.0
+yamllint==1.38.0
+molecule==26.9.0
+molecule-plugins[podman]==26.9.28

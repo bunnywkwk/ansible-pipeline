@@ -1,0 +1,4 @@
+# Checkov for the /opt/checkov virtualenv. Kept apart from /opt/ci: Checkov pins many shared libraries, and 3.4.3
+# supports Python up to 3.12 (proven on 3.11 in the chrome_cis spike).
+# Install: python3.11 -m venv /opt/checkov && /opt/checkov/bin/pip install -r ci/requirements-checkov.txt
+checkov==3.4.3
