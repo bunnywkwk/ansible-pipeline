@@ -73,7 +73,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 
 | Batch | Phase | Goal | You have at the end | Status |
 | --- | --- | --- | --- | --- |
-| 0 — CI foundation | CI | Jenkins builds on label `ansible` with pinned tools; a role repo with no Jenkinsfile builds from the central one | Working build node, GitHub connection, proven remote Jenkinsfile | In progress |
+| 0 — CI foundation | CI | Jenkins builds on label `ansible` with pinned tools; a role repo with no Jenkinsfile builds from the central one | Working build node, GitHub connection, proven remote Jenkinsfile | Done (2026-11-07) |
 | 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Not started |
 | 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Not started |
 | 3 — Gate drills | CI | Every gate catches a real bad commit | `docs/ci/gate-drills.md` with real output | Not started |
@@ -123,16 +123,16 @@ Current batch: Batch 0.
 
 **Steps**
 
-- [ ] Create public GitHub repos `ansible-pipeline` (this folder) and `ansible-role-webserver` (local folder `/home/bunny/ansible-role-webserver`, next to this one, not inside it). The role repo starts with only `README.md` and `meta/main.yml`, enough to test the marker file.
-- [ ] Write `ci/requirements-tools.txt` with pinned `ansible-core`, `ansible-lint`, `yamllint`, `molecule`, `molecule-plugins[podman]` and `checkov`, for a Python version all of them support.
-- [ ] Workstation admin: subuid/subgid ranges and `loginctl enable-linger` for `jenkins`; the `/opt/ci` and `/opt/checkov` virtualenvs; the gitleaks binary, pinned and checksum verified.
-- [ ] Jenkins plugins: Pipeline, Git, GitHub Branch Source, Remote Jenkinsfile Provider, Credentials Binding, Timestamper, Pipeline Stage View, JUnit.
-- [ ] Built-in node: label `ansible`.
-- [ ] Reuse credential `github-crendentials` (Username with password, fine-grained token `jenkins-laptop`, expires 2027-01-10): add the two new repos to the token's repository access. Permissions already set: Contents, Metadata and Pull requests read; Commit statuses read/write.
-- [ ] Folder `role-ci/`.
-- [ ] Spike `Jenkinsfile` in `ansible-pipeline`: one stage that prints the repo, branch and commit it was given, the tool versions, and boots a `ubi9-init` container with systemd.
-- [ ] Multibranch job `role-ci/ansible-role-webserver`: GitHub source with `github-crendentials`, build mode "by Remote Jenkins File Plugin", marker file `meta/main.yml`, Jenkinsfile from `ansible-pipeline` branch `main`, build triggered by the webhook, with a daily scan as a backup.
-- [ ] smee: a channel at smee.io, the smee client forwarding it to Jenkins as a user service, and a webhook on each role repo pointing at the channel.
+- [x] Create public GitHub repos `ansible-pipeline` (this folder) and `ansible-role-webserver` (local folder `/home/bunny/ansible-role-webserver`, next to this one, not inside it). The role repo starts with only `README.md` and `meta/main.yml`, enough to test the marker file.
+- [x] Write `ci/requirements-tools.txt` with pinned `ansible-core`, `ansible-lint`, `yamllint`, `molecule`, `molecule-plugins[podman]` and `checkov`, for a Python version all of them support.
+- [x] Workstation admin: subuid/subgid ranges and `loginctl enable-linger` for `jenkins`; the `/opt/ci` and `/opt/checkov` virtualenvs; the gitleaks binary, pinned and checksum verified.
+- [x] Jenkins plugins: Pipeline, Git, GitHub Branch Source, Remote Jenkinsfile Provider, Credentials Binding, Timestamper, Pipeline Stage View, JUnit.
+- [x] Built-in node: label `ansible`.
+- [x] Reuse credential `github-crendentials` (Username with password, fine-grained token `jenkins-laptop`, expires 2027-01-10): add each role repo to the token's repository access (`ansible-pipeline` is not needed: any token can read a public repo, and statuses go only to role repos). Permissions already set: Contents, Metadata and Pull requests read; Commit statuses read/write.
+- [x] Folder `role-ci/`.
+- [x] Spike `Jenkinsfile` in `ansible-pipeline`: one stage that prints the repo, branch and commit it was given, the tool versions, and boots a `ubi9-init` container with systemd.
+- [x] Multibranch job `role-ci/ansible-role-webserver`: GitHub source with `github-crendentials`, build mode "by Remote Jenkins File Plugin", marker file `meta/main.yml`, Jenkinsfile from `ansible-pipeline` branch `main`, build triggered by the webhook, with a daily scan as a backup.
+- [x] smee: a channel at smee.io, the smee client forwarding it to Jenkins as a user service, and a webhook on each role repo pointing at the channel.
 
 **Done when** (all checks run inside a Jenkins build, so they prove the real build context)
 
@@ -551,7 +551,7 @@ ansible-pipeline/                    # Batch 0 — the CI itself (this folder)
 ├── ci/requirements-*.txt            # pinned tool versions for /opt/ci and /opt/checkov
 ├── ci/.yamllint  ci/.ansible-lint  ci/.gitleaks.toml   # defaults; a role's own copy wins (Batch 2)
 ├── docs/PLAN.md                     # this plan
-└── docs/ci/                         # gates, onboarding, troubleshooting, gate drills (Batches 3, 5)
+└── docs/ci/                         # setup-guide, evidence, troubleshooting; later gates, onboarding, gate drills
 
 ansible-role-webserver/              # Batches 0–1 — example role and template; no pipeline code
 ├── defaults/  tasks/  handlers/  templates/
