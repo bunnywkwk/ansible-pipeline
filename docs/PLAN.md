@@ -25,7 +25,7 @@ A lab of a full Ansible role delivery pipeline on Jenkins, built **CI first**. C
 | Build node | Built-in node, label `ansible` | shortcut: builds can read the controller's files; move to a separate agent before real use |
 | CI pipeline | Central `Jenkinsfile` in `ansible-pipeline`; Remote Jenkinsfile Provider plugin | Role repos contain no pipeline code; a marker file (`meta/main.yml`) marks a branch as buildable |
 | CI jobs | Jenkins folder `role-ci/` | One multibranch job per role, or an organization folder for `ansible-role-*` (Batch 5) |
-| Triggers | Periodic repository scan, no webhook | GitHub cannot reach `localhost:8080` |
+| Triggers | GitHub webhook relayed by smee.io to `http://localhost:8080/github-webhook/`; daily repository scan as a backup | GitHub cannot reach `localhost:8080` directly; the smee client on the workstation forwards each event (changed 2026-11-07 from 5-minute scans, at your request) |
 | Tools | `/opt/ci` (Python 3.11, ansible-core 2.16) from `ci/requirements-tools.txt`, `/opt/checkov` (Python 3.11) from `ci/requirements-checkov.txt`, gitleaks 8.30.1 binary (checksum verified) | Pinned versions in the repo; Checkov is kept apart because of its dependency pins |
 | Security scanner | Checkov (`--framework ansible`) | Flags insecure task settings, such as `validate_certs: false` |
 | Secrets | Not handled in the lab | Only Jenkins' credentials store holds the GitHub token (`github-crendentials`) and, from Batch 6, the VM SSH key |
@@ -131,11 +131,12 @@ Current batch: Batch 0.
 - [ ] Reuse credential `github-crendentials` (Username with password, fine-grained token `jenkins-laptop`, expires 2027-01-10): add the two new repos to the token's repository access. Permissions already set: Contents, Metadata and Pull requests read; Commit statuses read/write.
 - [ ] Folder `role-ci/`.
 - [ ] Spike `Jenkinsfile` in `ansible-pipeline`: one stage that prints the repo, branch and commit it was given, the tool versions, and boots a `ubi9-init` container with systemd.
-- [ ] Multibranch job `role-ci/ansible-role-webserver`: GitHub source with `github-crendentials`, build mode "by Remote Jenkins File Plugin", marker file `meta/main.yml`, Jenkinsfile from `ansible-pipeline` branch `main`, periodic scan every 5 minutes.
+- [ ] Multibranch job `role-ci/ansible-role-webserver`: GitHub source with `github-crendentials`, build mode "by Remote Jenkins File Plugin", marker file `meta/main.yml`, Jenkinsfile from `ansible-pipeline` branch `main`, build triggered by the webhook, with a daily scan as a backup.
+- [ ] smee: a channel at smee.io, the smee client forwarding it to Jenkins as a user service, and a webhook on each role repo pointing at the channel.
 
 **Done when** (all checks run inside a Jenkins build, so they prove the real build context)
 
-- A push to `ansible-role-webserver`, which has no Jenkinsfile, starts a build by itself within one scan, and its console shows the central `Jenkinsfile` running on the role's code.
+- A push to `ansible-role-webserver`, which has no Jenkinsfile, starts a build by itself within seconds, through the webhook, and its console shows the central `Jenkinsfile` running on the role's code.
 - That build prints the versions of `ansible-core`, `ansible-lint`, `yamllint`, `molecule`, `checkov`, `gitleaks` and `podman`, matching `ci/requirements-tools.txt`.
 - In that build, a `ubi9-init` container reports `systemctl is-system-running` as `running` or `degraded`, as user `jenkins`.
 - A branch without `meta/main.yml` is not built.
@@ -533,7 +534,7 @@ Rollback is just a normal deploy of an older tag. It works cleanly because Molec
 
 **Next phase, in suggested order**
 
-1. Builds on a separate agent instead of the built-in node; webhooks through a reachable Jenkins URL instead of periodic scans.
+1. Builds on a separate agent instead of the built-in node; webhooks straight to a reachable Jenkins URL instead of the smee relay.
 2. Secrets from a vault (HashiCorp Vault or Ansible Vault) instead of Jenkins credentials.
 3. Jenkins permissions (Role-based Authorization Strategy plugin) so operators see only `cd/` jobs, or nothing but the dashboard.
 4. Dashboard sign-in and Deploy / Approve buttons that call Jenkins directly.

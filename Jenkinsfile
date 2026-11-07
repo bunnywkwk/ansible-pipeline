@@ -30,7 +30,9 @@ pipeline {
           ansible --version | head -1
           ansible-lint --version | head -1
           yamllint --version
-          molecule --version | head -2
+          # grep, not head: ansible-compat prints a cache warning on stdout first (/opt/ci is read-only on purpose).
+          # NO_COLOR: colour codes split "ansible:" and the grep misses it.
+          NO_COLOR=1 molecule --version | grep -E '^molecule|ansible:'
           /opt/checkov/bin/checkov --version
           gitleaks version
           podman --version
