@@ -1,5 +1,7 @@
 // Role CI: the central pipeline. Role repos hold no pipeline code; Jenkins loads this file for every role repo
 // (Remote Jenkinsfile Provider plugin) and runs it on the role's checked-out code.
+// No repo is named here: declarative pipelines run `checkout scm` before the first stage ("Declarative: Checkout SCM"),
+// and Jenkins fills `scm` from the job: the role repo, branch and commit being built. That is what makes this file reusable.
 // Batch 0 spike: proves the remote Jenkinsfile, the pinned tools and rootless systemd containers.
 // Batch 2 replaces the stage with the gates.
 pipeline {
