@@ -65,3 +65,23 @@ TASK [Run the role from this checkout]
 **Seen:** the `dependency` step printed `Nothing to do. All requested collections are already installed`: `ansible.posix` 2.2.2 and `containers.podman` 1.21.2 were in `~/.ansible/collections` from earlier projects. The run did not prove that the role's requirements are complete.
 
 **Fix:** test with an empty Ansible home, as a clean CI node would: `ANSIBLE_HOME=$(mktemp -d) molecule test`. Run that way (2026-11-07), both were downloaded into the empty home: `ansible.posix` by the prerun from the role's `requirements.yml`, and `containers.podman` by the `dependency` step itself, because the podman driver declares it (`molecule/dependency/base.py` installs `driver.required_collections`). A scenario `collections.yml` listing `containers.podman` was therefore redundant and was removed; the `dependency` step must stay, or a clean node cannot create the container.
+
+## Checkov crashes while writing its report and still exits 0
+
+**Seen** (local test of the Security stage, 2026-11-07)
+
+```text
+$ checkov -d . --framework ansible -o cli -o junitxml --output-file-path console,<a directory>
+IsADirectoryError: [Errno 21] Is a directory: '<a directory>'
+exit=0
+```
+
+**Cause:** with several outputs, `--output-file-path` takes one path per output, and for `junitxml` it must be a file, not a directory. Checkov finished scanning, crashed while writing the report, and still exited 0: in a pipeline, the security gate would pass without anyone noticing.
+
+**Fix:** a file path (`console,reports/checkov.xml`), and the stage also runs `test -s reports/checkov.xml`, so a missing report fails the stage.
+
+## Molecule container name too long for a hostname
+
+**Found before it happened** (Batch 2, 2026-11-07): the podman driver sets the container's hostname to its name (`hostname: item.hostname | default(item.name)` in its `create.yml`), and Linux hostnames are limited to 64 characters. A run id built from `BUILD_TAG` (`jenkins-role-ci-ansible-role-webserver-feature-2fwebserver-role-12`) makes the name about 81 characters.
+
+**Fix:** the pipeline sets `MOLECULE_RUN_ID = "e${EXECUTOR_NUMBER}"`, short and unique among builds running at once on the node.
