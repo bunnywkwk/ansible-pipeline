@@ -74,7 +74,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | Batch | Phase | Goal | You have at the end | Status |
 | --- | --- | --- | --- | --- |
 | 0 — CI foundation | CI | Jenkins builds on label `ansible` with pinned tools; a role repo with no Jenkinsfile builds from the central one | Working build node, GitHub connection, proven remote Jenkinsfile | Done (2026-11-07) |
-| 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Not started |
+| 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Done (2026-11-07) |
 | 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Not started |
 | 3 — Gate drills | CI | Every gate catches a real bad commit | `docs/ci/gate-drills.md` with real output | Not started |
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Not started |
@@ -152,13 +152,13 @@ Current batch: Batch 0.
 
 **Steps**
 
-- [ ] Scaffold `ansible-role-webserver` (`ansible-galaxy role init`), keeping only the folders the role uses.
-- [ ] `defaults/main.yml`: `webserver_port: 80`, `webserver_message: "Hello from the lab"`, `webserver_manage_firewall: true`.
-- [ ] Tasks: install nginx, template `/usr/share/nginx/html/index.html`, firewalld port (only when `webserver_manage_firewall`), service enabled and started, handler to reload nginx.
-- [ ] `meta/argument_specs.yml`: `webserver_port` int, `webserver_message` str, `webserver_manage_firewall` bool.
-- [ ] Molecule `default` scenario: 1 × `ubi9-init` with systemd; `webserver_manage_firewall: false` there, since containers have no firewalld.
-- [ ] Verify play: nginx running, port listening, page contains the message.
-- [ ] `VERSION` file containing `0.1.0`.
+- [x] Scaffold `ansible-role-webserver` (`ansible-galaxy role init`), keeping only the folders the role uses.
+- [x] `defaults/main.yml`: `webserver_port: 80`, `webserver_message: "Hello from the lab"`, `webserver_manage_firewall: true`.
+- [x] Tasks: install nginx, own server block `/etc/nginx/conf.d/webserver.conf` listening on `webserver_port`, page `/usr/share/nginx/html/webserver.html`, firewalld port (only when `webserver_manage_firewall`), service enabled and started, handler to reload nginx. **Changed 2026-11-07:** the package owns `index.html` (a symlink to its test page), so the role writes its own page and server block instead; this also makes nginx listen on `webserver_port`, not only the firewall.
+- [x] `meta/argument_specs.yml`: `webserver_port` int, `webserver_message` str, `webserver_manage_firewall` bool.
+- [x] Molecule `default` scenario: 1 × `ubi9-init` with systemd; `webserver_manage_firewall: false` there, since containers have no firewalld.
+- [x] Verify play: nginx running, port listening, page contains the message.
+- [x] `VERSION` file containing `0.1.0`.
 
 ```yaml
 # molecule/default/molecule.yml (shape)

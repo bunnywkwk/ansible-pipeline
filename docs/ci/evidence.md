@@ -62,3 +62,39 @@ Finished: SUCCESS
 | Jenkins status on GitHub | Passed after the token fix (see troubleshooting): `62d9dd2` has status `continuous-integration/jenkins/branch` = success, "This commit looks good" |
 
 **Known:** `jenkins` is also in the `docker` group (Docker CE active), used by older jobs. Role CI does not use Docker. Membership in that group is equivalent to root on the workstation.
+
+## Batch 1 — Template role (2026-11-07)
+
+Role `ansible-role-webserver`, run by hand on the workstation with `/opt/ci` activated and an **empty Ansible home** (`ANSIBLE_HOME=$(mktemp -d) molecule test`), so nothing came from earlier installs.
+
+```text
+INFO     default ➜ discovery: scenario test matrix: dependency, destroy, create, converge, idempotence, verify, destroy
+WARNING  default ➜ dependency: Missing roles requirements file: requirements.yml
+WARNING  default ➜ dependency: Missing collections requirements file: collections.yml
+converge     webserver-ubi9-local : ok=6    changed=5    unreachable=0    failed=0    skipped=1
+idempotence  webserver-ubi9-local : ok=5    changed=0    unreachable=0    failed=0
+verify       webserver-ubi9-local : ok=4    changed=0    unreachable=0    failed=0
+default ➜ destroy: Executed: Successful
+```
+
+The empty home afterwards held `ansible.posix-2.2.2` (prerun, from the role's `requirements.yml`) and `containers.podman-1.21.2` (`dependency` step, declared by the podman driver). The two "Missing" warnings are expected: the scenario has no test-only requirements.
+
+Static checks on the final files:
+
+```text
+yamllint: OK
+ansible-lint --profile production: Passed: 0 failure(s), 0 warning(s) in 11 files processed of 14 encountered.
+checkov -d . --framework ansible: Passed checks: 4, Failed checks: 0, Skipped checks: 1   (CKV2_ANSIBLE_1, verify.yml http://localhost request, reason inline)
+gitleaks dir: no leaks found
+```
+
+| Done-when check | Result |
+| --- | --- |
+| `molecule test` passes with `/opt/ci`, idempotence 0 changed | Passed (above), on an empty Ansible home |
+| yamllint, ansible-lint `production`, Checkov clean | Passed; one Checkov skip with a written reason |
+
+**Decisions made in this batch**
+
+- The role writes its own server block (`conf.d/webserver.conf`) and page (`webserver.html`): the package owns `index.html` (a symlink to its test page), and nginx must listen on `webserver_port`, not only the firewall.
+- `verify.yml` uses `ansible.builtin.uri` with an inline `checkov:skip=CKV2_ANSIBLE_1` (the comment must sit inside the task to count); `curl` would trade it for an ansible-lint `command-instead-of-module` skip.
+- The test sequence is written out: no `syntax` (it only checks `converge.yml`; the Ansible lint gate's unskippable `syntax-check` covers every playbook) and no scenario `collections.yml` (the driver declares `containers.podman`); `dependency` stays because it installs that collection on a clean node.
