@@ -45,7 +45,10 @@ pipeline {
         sh '''
           . /opt/ci/bin/activate
           yamllint --version
+          # yamllint prints nothing when clean; say so, so the log shows the check ran.
+          # Two lines, not "&&": sh -e does not stop on a failure inside an && list.
           yamllint -f parsable .
+          echo "yamllint: no problems found"
         '''
       }
     }
