@@ -75,7 +75,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | --- | --- | --- | --- | --- |
 | 0 — CI foundation | CI | Jenkins builds on label `ansible` with pinned tools; a role repo with no Jenkinsfile builds from the central one | Working build node, GitHub connection, proven remote Jenkinsfile | Done (2026-11-07) |
 | 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Done (2026-11-07) |
-| 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | In progress |
+| 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Done (2026-11-07) |
 | 3 — Gate drills | CI | Every gate catches a real bad commit | `docs/ci/gate-drills.md` with real output | Not started |
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Not started |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Not started |
@@ -207,9 +207,9 @@ verifier:
 
 **Steps**
 
-- [ ] Replace the spike `Jenkinsfile` with the stages above: `agent { label 'ansible' }`, `/opt/ci` activated, timeout, `disableConcurrentBuilds()`, unique Molecule names per build (`MOLECULE_RUN_ID`), `post { always }` cleanup.
-- [ ] ~~Default `.yamllint`, `.ansible-lint` and `.gitleaks.toml` in `ansible-pipeline/ci/`~~ **Changed 2026-11-07:** no central configs. Each tool already picks up a role's own config file from its root, and without one its built-in defaults apply, the same for every role. Central copies would need a second checkout in every build. Add one only when the Batch 3 drills show a shared rule is needed.
-- [ ] Archive the gitleaks and ansible-lint SARIF reports and the Molecule output as build artifacts.
+- [x] Replace the spike `Jenkinsfile` with the stages above: `agent { label 'ansible' }`, `/opt/ci` activated, timeout, `disableConcurrentBuilds()`, unique Molecule names per build (`MOLECULE_RUN_ID`), `post { always }` cleanup.
+- [x] ~~Default `.yamllint`, `.ansible-lint` and `.gitleaks.toml` in `ansible-pipeline/ci/`~~ **Changed 2026-11-07:** no central configs. Each tool already picks up a role's own config file from its root, and without one its built-in defaults apply, the same for every role. Central copies would need a second checkout in every build. Add one only when the Batch 3 drills show a shared rule is needed.
+- [x] Archive the gitleaks and ansible-lint SARIF reports and the Molecule output as build artifacts.
 
 **Done when**
 
@@ -257,7 +257,7 @@ verifier:
 
 - [ ] Add the Release stage to the central `Jenkinsfile` with `when { branch 'main' }`.
 - [ ] Jenkins pushes tags over HTTPS with `github-crendentials`; give the token Contents read/write on the role repos.
-- [ ] GitHub branch ruleset on `main`: pull request required, status check `continuous-integration/jenkins/pr-merge` required, no force push, no bypass.
+- [ ] GitHub branch ruleset on `main`: pull request required, the Jenkins PR check required (the job reports `continuous-integration/jenkins/pr-head` today; either switch the job to build the PR merged with `main` and require `pr-merge`, or require the branch to be up to date before merging), no force push, no bypass.
 - [ ] GitHub tag ruleset on `v*`: block update and deletion. Creation stays allowed: the token acts as you, so GitHub cannot tell a Jenkins tag from a hand-made one (changed 2026-11-07: HTTPS token instead of a deploy key, at your request).
 - [ ] Merge the Batch 1 role to `main` with `VERSION` = `0.1.0`.
 

@@ -93,8 +93,39 @@ gitleaks dir: no leaks found
 | `molecule test` passes with `/opt/ci`, idempotence 0 changed | Passed (above), on an empty Ansible home |
 | yamllint, ansible-lint `production`, Checkov clean | Passed; one Checkov skip with a written reason |
 
-**Decisions made in this batch**
+**Decisions**
 
-- The role writes its own server block (`conf.d/webserver.conf`) and page (`webserver.html`): the package owns `index.html` (a symlink to its test page), and nginx must listen on `webserver_port`, not only the firewall.
-- `verify.yml` uses `ansible.builtin.uri` with an inline `checkov:skip=CKV2_ANSIBLE_1` (the comment must sit inside the task to count); `curl` would trade it for an ansible-lint `command-instead-of-module` skip.
-- The test sequence is written out: no `syntax` (it only checks `converge.yml`; the Ansible lint gate's unskippable `syntax-check` covers every playbook) and no scenario `collections.yml` (the driver declares `containers.podman`); `dependency` stays because it installs that collection on a clean node.
+- Own server block and page: the package owns `index.html`, and nginx must listen on `webserver_port`.
+- `verify.yml` uses `uri` with one Checkov skip, written inside the task.
+- No `syntax` step (ansible-lint covers it); no scenario `collections.yml` (the podman driver declares its own); `dependency` stays (it installs that collection on a clean node).
+
+## Batch 2 — Central pipeline (2026-11-07)
+
+Build `feature/webserver-role` (Build Now), first run with the gates:
+
+```text
+Secrets       3 commits scanned. no leaks found
+YAML lint     (clean; the stage now prints "yamllint: no problems found")
+Ansible lint  Passed: 0 failure(s), 0 warning(s) in 11 files processed of 15 encountered. Profile 'production' was required, and it passed.
+Security      Passed checks: 4, Failed checks: 0, Skipped checks: 1   + test -s reports/checkov.xml
+Molecule      converge changed=5, idempotence changed=0, verify failed=0 (container webserver-ubi9-e0)
+              dependency 38 s: first download of containers.podman as jenkins
+post          molecule destroy --all; reports archived
+GitHub has been notified of this commit's build result
+Finished: SUCCESS
+```
+
+Pull request #1 `feature/webserver-role → main` (open, not merged), commit `bf13ae8` on GitHub:
+
+```text
+continuous-integration/jenkins/branch   | success
+continuous-integration/jenkins/pr-head  | success
+```
+
+| Done-when check | Result |
+| --- | --- |
+| Branch build runs all five stages, green | Passed |
+| PR build runs all five stages, green; PR shows the check | Passed: `PR-1` built by itself; check `pr-head` |
+| Reports archived | Passed: `reports/gitleaks.sarif`, `ansible-lint.sarif`, `checkov.xml` |
+
+**Note:** the job builds the PR's own commit (`pr-head`), not the PR merged with `main` (`pr-merge`). Batch 4 decides which check the merge gate requires.

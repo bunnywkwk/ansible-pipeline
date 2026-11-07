@@ -1,6 +1,6 @@
 # Role CI setup guide
 
-The happy path to build the central role CI from scratch: GitHub, a Jenkins build node, the central pipeline, and a role repo with no pipeline code. Each step has one line on why. Proof of each step is in [evidence.md](evidence.md); errors met on the way are in [troubleshooting.md](troubleshooting.md).
+How to build the central role CI again, batch by batch. One line per step. Proof of each step is in [evidence.md](evidence.md); errors met on the way are in [troubleshooting.md](troubleshooting.md).
 
 **Starting point:** Fedora workstation with Jenkins (RPM, runs as user `jenkins`), Podman, git, Python 3.11, Node.js with `smee-client`. Values used in this lab: GitHub user `bunnywkwk`, `jenkins` uid 962.
 
@@ -14,13 +14,15 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
   → stages run on the node labelled "ansible"         → ✓ or ✗ posted back to the commit on GitHub
 ```
 
-## Part 1 — GitHub
+## Batch 0 — CI foundation
+
+### Part 1 — GitHub
 
 1. **Create public repo `ansible-pipeline`, all "Initialize" boxes unchecked.** It holds the central `Jenkinsfile`, pinned tool lists and docs; empty so the first push is clean.
 2. **Create public repo `ansible-role-webserver`, same settings.** It holds role code only, never pipeline code.
 3. **Create a fine-grained token** (Settings → Developer settings → Fine-grained tokens): Repository access = *Only select repositories* with each role repo; permissions Contents read, Metadata read, Pull requests read, **Commit statuses read and write**. Jenkins reads code with it and posts the ✓/✗; listing only role repos keeps it from touching anything else. `ansible-pipeline` does not need to be listed: any token can read a public repo.
 
-## Part 2 — Build node (run with sudo)
+### Part 2 — Build node (run with sudo)
 
 4. **Give `jenkins` a subordinate ID range** (pick a block no other user has in `/etc/subuid`):
    ```bash
@@ -65,14 +67,14 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
    ```
    Always activate, never call by full path: otherwise Molecule finds Fedora's `/usr/bin/ansible` first.
 
-## Part 3 — Jenkins (UI at http://localhost:8080)
+### Part 3 — Jenkins (UI at http://localhost:8080)
 
 10. **Plugins** (Manage Jenkins → Plugins): Pipeline, Git, GitHub Branch Source, **Remote Jenkinsfile Provider**, Credentials Binding, Timestamper, Pipeline: Stage View, JUnit. Remote Jenkinsfile Provider is what lets a repo build from a Jenkinsfile kept in another repo.
 11. **Label the Built-In Node `ansible`** (Manage Jenkins → Nodes → Built-In Node → Configure; executors ≥ 1, usage unchanged). The pipeline asks for "a node with the tools", not a machine name, so moving to a separate agent later means moving the label only.
 12. **Credential `github-crendentials`** (Manage Jenkins → Credentials → Global): kind *Username with password*, username = GitHub user, password = the token from step 3. GitHub Branch Source needs this kind for a token.
 13. **Folder `role-ci`** (New Item → Folder). Keeps CI jobs apart from CD jobs.
 
-## Part 4 — Repo contents
+### Part 4 — Repo contents
 
 14. **Push `ansible-pipeline`** with `Jenkinsfile`, `ci/requirements-tools.txt`, `ci/requirements-checkov.txt` and `docs/`:
     ```bash
@@ -89,7 +91,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
     ```
     `meta/main.yml` is the marker: only branches containing it are built. `git push` over HTTPS asks for a token with Contents write, not the Jenkins token.
 
-## Part 5 — Job and trigger
+### Part 5 — Job and trigger
 
 16. **Multibranch job** (in `role-ci`: New Item → `ansible-role-webserver` → Multibranch Pipeline):
     | Setting | Value |
@@ -128,12 +130,30 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
     Runs at login and restarts on failure, so pushes trigger builds without an open terminal.
 19. **Webhook on the role repo** (Settings → Webhooks → Add webhook): Payload URL = smee channel URL, content type **`application/json`**, events **Pushes** and **Pull requests**. JSON is required: with the default form type, smee mangles the payload and Jenkins ignores it.
 
-## Part 6 — Check it works
+### Part 6 — Check it works
 
 20. **Webhook relay:** `journalctl --user -u smee-jenkins -n 5 --no-pager` shows `POST http://localhost:8080/github-webhook/?smee=1 - 200` after GitHub's ping.
 21. **Push to the role** (any small change): a `main` build starts within seconds. Its console shows the Jenkinsfile read from `ansible-pipeline`, the role cloned in `Declarative: Checkout SCM`, `No Jenkinsfile in this repo`, the tool versions, `systemd in container: running`, and `Finished: SUCCESS`.
 22. **Status on GitHub:** the commit shows `continuous-integration/jenkins/branch` ✓ ("This commit looks good").
 23. **Marker:** push a branch without `meta/main.yml`; no branch job appears for it. Delete the branch afterwards.
+
+## Batch 1 — Template role
+
+24. **Write the role** in `ansible-role-webserver`: `defaults/` (variables), `meta/argument_specs.yml` (type checks), `tasks/` and `handlers/`, `templates/` (server block and page), `requirements.yml` (collections the role needs), `VERSION` (`0.1.0`).
+25. **Write the Molecule test** in `molecule/default/`: `molecule.yml` (one `ubi9-init` container and the test steps), `converge.yml` (runs the role from the checkout), `verify.yml` (nginx up, page shows the message).
+26. **Lint by hand:**
+    ```bash
+    . /opt/ci/bin/activate
+    yamllint . && ansible-lint --profile production && /opt/checkov/bin/checkov -d . --framework ansible --skip-download
+    ```
+27. **Test by hand on an empty Ansible home**, like a fresh CI node: `ANSIBLE_HOME=$(mktemp -d) molecule test`. Idempotence must show `changed=0`.
+28. **Push on a feature branch**, never straight to `main`: `git switch -c feature/webserver-role`, commit, `git push -u origin feature/webserver-role`.
+
+## Batch 2 — Central pipeline
+
+29. **Replace the spike stage in `ansible-pipeline/Jenkinsfile` with the gates** (Secrets, YAML lint, Ansible lint, Security, Molecule) and push. Role repos do not change.
+30. **Build the feature branch** (Jenkins → the branch → Build Now): all five stages green, reports under *Build Artifacts*.
+31. **Open a pull request** from the feature branch to `main`: Jenkins builds `PR-1` by itself and the PR shows the check. Do not merge yet; the merge gate comes in Batch 4.
 
 ## Adding another role repo (until Batch 5 automates it)
 
