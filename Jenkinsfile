@@ -3,7 +3,7 @@
 // No repo is named here: declarative pipelines run `checkout scm` before the first stage ("Declarative: Checkout SCM"),
 // and Jenkins fills `scm` from the job: the role repo, branch and commit being built. That is what makes this file reusable.
 //
-// Gates, cheapest first: Secrets → YAML lint → Ansible lint → Security → Molecule.
+// Gates, cheapest first: Secrets → YAML lint → Ansible lint → Security → Molecule; then Release, on main only.
 // Tool configs: a role's own .yamllint, .ansible-lint, .gitleaks.toml or .checkov.yml is picked up from its root;
 // without one, each tool's built-in defaults apply. Collections come from the role's requirements.yml (Molecule).
 pipeline {
@@ -86,6 +86,30 @@ pipeline {
           molecule --version | grep -E '^molecule|ansible:'
           molecule test --all
         '''
+      }
+    }
+
+    // main only, after every gate: tag the tested commit v<VERSION>. An existing tag is never moved: skip instead.
+    stage('Release') {
+      when { branch 'main' }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-crendentials',
+                                          usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+          sh '''
+            V=$(cat VERSION)
+            echo "$V" | grep -qxE '[0-9]+[.][0-9]+[.][0-9]+' || { echo "VERSION must be X.Y.Z, got '$V'"; exit 1; }
+            # Token read from the environment by git, never put in a URL or the log
+            H='!f() { echo "username=$GIT_USER"; echo "password=$GIT_TOKEN"; }; f'
+            if git -c credential.helper= -c credential.helper="$H" ls-remote --exit-code --tags origin "refs/tags/v$V" >/dev/null; then
+              echo "Tag v$V already exists: release skipped. Bump VERSION in a pull request to release."
+            else
+              # -f: local tag only, left over if an earlier push failed; the push itself never forces
+              git -c user.name=jenkins -c user.email=jenkins@localhost tag -fa "v$V" -m "Release v$V"
+              git -c credential.helper= -c credential.helper="$H" push origin "refs/tags/v$V"
+              echo "Released v$V at $(git rev-parse --short HEAD)"
+            fi
+          '''
+        }
       }
     }
   }

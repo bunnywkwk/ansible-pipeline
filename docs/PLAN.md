@@ -76,8 +76,8 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 0 — CI foundation | CI | Jenkins builds on label `ansible` with pinned tools; a role repo with no Jenkinsfile builds from the central one | Working build node, GitHub connection, proven remote Jenkinsfile | Done (2026-11-07) |
 | 1 — Template role | CI | `webserver` role passes Molecule by hand | `ansible-role-webserver` with Molecule | Done (2026-11-07) |
 | 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Done (2026-11-07) |
-| 3 — Gate drills | CI | Every gate catches a real bad commit | `docs/ci/gate-drills.md` with real output | Not started |
-| 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Not started |
+| 3 — Gate drills | CI | Every gate catches a real bad commit | Drill table with real output in `docs/ci/evidence.md` | Done (2026-11-07) |
+| 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | In progress |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Not started |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
@@ -221,31 +221,32 @@ verifier:
 
 **Goal:** every gate has caught a real bad commit. A gate that stays green when it should go red is a gap; fix it with the smallest change and re-push the same bad commit.
 
-**Each round:** predict the stage that fails → push the bad commit on a throwaway branch → paste the real result → fix any gap → re-push the same commit → record the prediction, result and fix in `docs/ci/gate-drills.md`.
+**Each round:** predict the stage that fails → push the bad commit on branch `drill/NN-name` → read the real result → fix any gap → re-push the same commit → record it in the drill table in `docs/ci/evidence.md`.
 
-| # | Break | Predicted |
-| --- | --- | --- |
-| 1 | Wrong YAML indentation | YAML lint red |
-| 2 | Typo in a module name | Ansible lint red (laptop spike: passed with `--offline`; confirm here) |
-| 3 | Undefined variable in a task | Lint passes, Molecule converge red |
-| 4 | `shell: yum install nginx` | Ansible lint red |
-| 5 | `ansible.builtin.file` with no `mode` | Ansible lint red |
-| 6 | Fake private key in `defaults/main.yml` | Secrets red, value redacted in the log |
-| 7 | Fake token only in `README.md` | Secrets red |
-| 8 | Delete that secret in a second commit | Still red: it is in history. Fix: rewrite the branch, force-push |
-| 9 | Harmless example value flagged | Red, a false positive. Fix: `.gitleaksignore` with a written reason |
-| 10 | `get_url` with `validate_certs: false` | Security red |
-| 11 | `dnf` with `disable_gpg_check: true` | Security red |
-| 12 | `yum_repository` with `gpgcheck: false` | Green: known Checkov gap from the spike. Decide: custom policy or recorded limit |
-| 13 | Change the page text without updating verify | Molecule verify red |
-| 14 | Task with `changed_when: true` | Molecule idempotence red |
-| 15 | Add a `Jenkinsfile` to a role branch that skips every stage | Ignored: the central pipeline still runs |
-| 16 | Remove `meta/main.yml` on a branch | Branch not built |
-| 17 | `README.md`-only change | Full build: a gap. Fix: skip tests for docs-only changes; Secrets still runs |
-| 18 | Tool missing from `/opt/ci`; test image unreachable | Red that is not the code's fault; the message makes that clear |
-| 19 | Abort a build during Molecule | No container left behind (`post { always }`) |
+One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19 to 8 at your request).
 
-**Done when:** every row has real output in `docs/ci/gate-drills.md`, every gap has a fix proven by re-pushing the same commit, and accepted limits are written down with a reason.
+| # | Break | Proves | Predicted | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Wrong YAML indentation | YAML lint | YAML lint red | Done: as predicted |
+| 2 | Typo in a module name | Ansible lint syntax-check | Ansible lint red | Done: gap found (Molecule caught it, not lint); fixed with a static `import_role` in `converge.yml` |
+| 3 | `shell: yum install -y nginx` | Ansible lint rules | Ansible lint red | Done: as predicted (3 rules) |
+| 4 | Fake private key, then deleted in a second commit | Secrets scans history, not only the last commit | Secrets red on both pushes, value redacted. Fix: drop the commit, force-push | Done: as predicted; GitHub push protection did not block the key |
+| 5 | `get_url` with `validate_certs: false` | Security (Checkov) | Security red | Done: as predicted (`CKV_ANSIBLE_2`) |
+| 6 | Change the page text without updating verify | Molecule verify | Molecule verify red | Done: as predicted |
+| 7 | Task with `changed_when: true` | Molecule idempotence | Molecule idempotence red | Done: as predicted |
+| 8 | Role branch adds its own `Jenkinsfile` that skips every stage | Role repos cannot change the pipeline | Ignored: the central pipeline still runs | Done: as predicted |
+
+**Dropped, with reason:**
+
+- Undefined variable: Molecule converge red is already shown by drill 2 before its fix.
+- `file` without `mode`, `dnf` with `disable_gpg_check`, fake token in `README.md`: same gate and same tool as drills 3, 5 and 4.
+- Branch without `meta/main.yml`: proven in Batch 0.
+- `yum_repository` with `gpgcheck: false`: Checkov missed it in the earlier laptop spike (not re-run here); recorded as a known limit, not a drill.
+- Abort during Molecule: skipped at your request; Molecule's own cleanup after a failure is shown in drills 6 and 7, and `post { always }` runs `molecule destroy --all` in every build.
+- Known limit, found 2026-11-07 (local ansible-lint run): `command-instead-of-module` lists `yum` but not `dnf` or `apt`, so `command: dnf install -y nginx` with `changed_when: false` passes lint. PR review catches it for now; revisit a custom rule in Batch 5.
+- `.gitleaksignore` false positive, docs-only builds, missing tool or unreachable image: setup procedures or optimisations, not something a gate catches.
+
+**Done when:** drills 1–8 have real results in `docs/ci/evidence.md`, every gap has a fix proven by re-pushing the same commit. Drill branches stay on GitHub as evidence (changed 2026-11-07: kept, not deleted, at your request).
 
 ## Batch 4 — Release tags and merge gate
 
@@ -257,7 +258,8 @@ verifier:
 
 - [ ] Add the Release stage to the central `Jenkinsfile` with `when { branch 'main' }`.
 - [ ] Jenkins pushes tags over HTTPS with `github-crendentials`; give the token Contents read/write on the role repos.
-- [ ] GitHub branch ruleset on `main`: pull request required, the Jenkins PR check required (the job reports `continuous-integration/jenkins/pr-head` today; either switch the job to build the PR merged with `main` and require `pr-merge`, or require the branch to be up to date before merging), no force push, no bypass.
+- [ ] GitHub branch ruleset on `main`: pull request required, check `continuous-integration/jenkins/pr-head` required with "branches up to date before merging", no force push, no deletion, no bypass. **Decided 2026-11-07:** `pr-head` + up to date, not `pr-merge`: no job change, and an up-to-date PR head is exactly what gets merged. Not `branch`: branches with an open PR are not built as branches (Batch 3 drill 2 note).
+- [ ] `ansible-pipeline` `main`: block force push and deletion (added 2026-11-07: Batch 3 drill 8 showed whoever pushes there controls CI). Direct pushes stay allowed.
 - [ ] GitHub tag ruleset on `v*`: block update and deletion. Creation stays allowed: the token acts as you, so GitHub cannot tell a Jenkins tag from a hand-made one (changed 2026-11-07: HTTPS token instead of a deploy key, at your request).
 - [ ] Merge the Batch 1 role to `main` with `VERSION` = `0.1.0`.
 

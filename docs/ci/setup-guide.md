@@ -140,7 +140,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 ## Batch 1 — Template role
 
 24. **Write the role** in `ansible-role-webserver`: `defaults/` (variables), `meta/argument_specs.yml` (type checks), `tasks/` and `handlers/`, `templates/` (server block and page), `requirements.yml` (collections the role needs), `VERSION` (`0.1.0`).
-25. **Write the Molecule test** in `molecule/default/`: `molecule.yml` (one `ubi9-init` container and the test steps), `converge.yml` (runs the role from the checkout), `verify.yml` (nginx up, page shows the message).
+25. **Write the Molecule test** in `molecule/default/`: `molecule.yml` (one `ubi9-init` container and the test steps), `converge.yml` (runs the role from the checkout with `import_role: name: <namespace>.<role_name>` from `meta/main.yml`; static, so ansible-lint also syntax-checks the role's tasks), `verify.yml` (nginx up, page shows the message).
 26. **Lint by hand:**
     ```bash
     . /opt/ci/bin/activate
@@ -154,6 +154,11 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 29. **Replace the spike stage in `ansible-pipeline/Jenkinsfile` with the gates** (Secrets, YAML lint, Ansible lint, Security, Molecule) and push. Role repos do not change.
 30. **Build the feature branch** (Jenkins → the branch → Build Now): all five stages green, reports under *Build Artifacts*.
 31. **Open a pull request** from the feature branch to `main`: Jenkins builds `PR-1` by itself and the PR shows the check. Do not merge yet; the merge gate comes in Batch 4.
+
+## Batch 3 — Gate drills
+
+32. **Break each gate once** on its own branch `drill/NN-name` from the feature branch, push, and record predicted vs real in [evidence.md](evidence.md). A gate that stays green is a gap: fix it on the feature branch, rebase the drill branch, push again.
+33. **Keep the drill branches** on GitHub as evidence; they stay red in Jenkins, which is the point.
 
 ## Adding another role repo (until Batch 5 automates it)
 

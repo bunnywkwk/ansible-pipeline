@@ -129,3 +129,30 @@ continuous-integration/jenkins/pr-head  | success
 | Reports archived | Passed: `reports/gitleaks.sarif`, `ansible-lint.sarif`, `checkov.xml` |
 
 **Note:** the job builds the PR's own commit (`pr-head`), not the PR merged with `main` (`pr-merge`). Batch 4 decides which check the merge gate requires.
+
+## Batch 3 — Gate drills (2026-11-07)
+
+Each drill: one bad commit on branch `drill/NN-name` (from `feature/webserver-role`), built by Jenkins by itself. Predicted stage, then what really happened.
+
+| # | Break | Predicted | Result | Error seen |
+| --- | --- | --- | --- | --- |
+| 01 | Indent `webserver_message` in `defaults/main.yml` | YAML lint red | As predicted: Secrets passed, YAML lint failed, the other 3 stages skipped; `Finished: FAILURE`, GitHub status `error` | `defaults/main.yml:8:3: [error] syntax error: expected <block end>, but found '<block mapping start>' (syntax)` |
+| 02 | `ansible.builtin.template` → `templat` in `tasks/main.yml` | Ansible lint red | **Gap:** Ansible lint passed (only `WARNING Invalid value (None)for resolved_fqcn attribute of ansible.builtin.templat module`), Security passed; Molecule converge failed, `Finished: FAILURE`. Cause: syntax-check only reads playbooks, and `converge.yml` loaded the role at run time (`include_role` with a lookup). Fix (`a72181f`): `import_role: name: bunnywkwk.webserver`. Re-run #2 on top of it: Ansible lint red at `tasks/main.yml:9:3` `syntax-check[unknown-module]`, Security and Molecule skipped | `ERROR! couldn't resolve module/action 'ansible.builtin.templat'. This often indicates a misspelling, missing collection, or incorrect module path.` |
+| 03 | `dnf` task replaced by `shell: yum install -y nginx` | Ansible lint red | As predicted: Ansible lint failed with 3 rules (all profile `basic`), Security and Molecule skipped, `Finished: FAILURE` | `command-instead-of-module: yum used in place of yum module`, `command-instead-of-shell: Use shell only when shell functionality is required.`, `no-changed-when: Commands should not change things if nothing needs doing.` (all `tasks/main.yml:2`) |
+| 04 | 4a: throwaway ed25519 private key added to `defaults/main.yml` (`807e901`) | Secrets red, value redacted | 4a as predicted: GitHub accepted the push (no push protection block); Secrets failed, the other 4 stages skipped, `Finished: FAILURE`. 4b as predicted: revert `34a6dc0` (files equal to `feature/webserver-role` again) still red, same finding from `807e901`, `6 commits scanned`. 4c as predicted: `reset --hard` to `a72181f` + force-push, build #3 green in all 5 stages (`4 commits scanned`, `no leaks found`) | `RuleID: private-key`, `Secret: REDACTED`, `File: defaults/main.yml`, `Line: 15`, `5 commits scanned`, `leaks found: 1` |
+| 05 | `get_url` task with `validate_certs: false` added to `tasks/main.yml` | Security red | As predicted: Secrets, YAML lint and Ansible lint passed (ansible-lint does not check this), Security failed, Molecule skipped, `Finished: FAILURE` | `Check: CKV_ANSIBLE_2: "Ensure that certificate validation isn't disabled with get_url"`, `FAILED for resource: tasks.ansible.builtin.get_url.Download the site logo`, `File: /tasks/main.yml:41-48` |
+| 06 | `webserver_message` changed to "Hello from the web", `verify.yml` not updated | Molecule verify red | As predicted: the first 4 gates passed; Molecule converge `changed=5`, idempotence `changed=0`, verify `failed=1`; Molecule destroyed the container itself ("Cleaning up"), then `post` ran `molecule destroy --all`; `Finished: FAILURE` | `"assertion": "expected_message in page.content"`, `"msg": "Page does not contain 'Hello from the lab'"`, `[default > verify] Executed: Failed` |
+| 07 | `changed_when: true` added to the `Install nginx` task | Molecule idempotence red | As predicted: the first 4 gates passed (no linter flags it); converge `changed=5`, idempotence `changed=1`, verify not run; Molecule cleaned up, `Finished: FAILURE` | `CRITICAL Idempotence test failed because of the following tasks:`, `*  => bunnywkwk.webserver : Install nginx` |
+| 08 | Role branch adds its own `Jenkinsfile` (one stage `Skip CI`, `echo 'all checks skipped'`) | Ignored, central pipeline runs | As predicted: the pipeline was read from `ansible-pipeline` (`638fac2`), the role commit `e5bb6c6` was checked out as code only; all 5 gates ran and passed, no `Skip CI` stage, `Finished: SUCCESS` | `Checking out git https://github.com/bunnywkwk/ansible-pipeline.git into …@script/… to read Jenkinsfile`; ansible-lint `16 encountered` (was 15: the role's Jenkinsfile is just a file) |
+
+**Notes**
+
+- Fix `a72181f` built green as `PR-1` #2 (converge `changed=5`, idempotence `changed=0`, verify `failed=0`), so Molecule resolves `bunnywkwk.webserver` too.
+- A push to a branch with an open PR builds `PR-1` only: branch discovery is "Exclude branches that are also filed as PRs", so the `feature/webserver-role` job is no longer buildable. Such commits get only the `pr-head` status, never `branch`; Batch 4 must require `pr-head` (or `pr-merge`), not `branch`.
+- Known limit: `command-instead-of-module` lists `yum` but not `dnf`; `command: dnf install -y nginx` with `changed_when: false` passed a local ansible-lint run. Not drilled on Jenkins.
+
+| Done-when check | Result |
+| --- | --- |
+| Drills 1–8 have real results | Passed (table above); drill 9 dropped at your request |
+| Every gap fixed and proven by re-pushing the same commit | Passed: one gap (drill 02), fixed in `a72181f`, re-run red at Ansible lint |
+| Drill branches | Kept on GitHub as evidence: `drill/01-yaml-indent` … `drill/08-own-jenkinsfile` |
