@@ -33,7 +33,7 @@ Gates 1–5 run on branches and PRs, cheapest first; the first red stage stops t
 | Security | Checkov 3.4.3 | Insecure settings such as `validate_certs: false` | Drill 5 | Fix the setting; skip only with a reason inside the task (`# checkov:skip=ID: reason`) |
 | Container test | Molecule 26.9.0, Podman, `ubi9-init` | The role does not run or is not idempotent (branch builds) | Drill 7 | Read the failing step and task in the console |
 | VM test | Molecule, Terraform, KVM | The same, on real RHEL 9: SELinux enforcing, firewalld on, packages from Red Hat (PR builds) | `PR-4` #2, green run only | Read the failing task in the console |
-| Release | git | — (`main` only): tags the PR's commit `v<VERSION>`; skips if the tag exists, or if the commit is not a PR merge | `v0.1.0` from `main` #5; skip on #8 | 403 on push: the token needs Contents write |
+| Release | git | — (`main` only): tags the PR's commit `v<VERSION>`; skips if the tag exists, or if the commit is not a PR merge | `v0.1.1` from `main` #9; skip on #8 | 403 on push: the token needs Contents write |
 
 Molecule only proves the role runs and is idempotent: there is no verify step for now. Checking what the role does belongs to a separate audit.
 

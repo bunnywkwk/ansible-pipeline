@@ -250,3 +250,33 @@ Finished: SUCCESS
 ```
 
 Settings read back: ruleset `allowed_merge_methods: ['merge']`; job config has no fork discovery.
+
+### First release from the Release-only `main` (2026-11-09)
+
+`PR-5` #1 (`VERSION` 0.1.1), 77 s, red before any VM was made:
+
+```text
+failed to retrieve authentication checksums for provider: ... 504 Gateway Timeout returned from github.com
+```
+
+Fix: Terraform plugin on the build node, pipeline `d2de55c`. See [troubleshooting](troubleshooting.md).
+
+`PR-5` #2, 4 min 2 s:
+
+```text
+converge    role-vm-e0 : ok=7 changed=6 failed=0
+idempotence role-vm-e0 : ok=6 changed=0 failed=0
+Finished: SUCCESS
+```
+
+PR-5 merged. `main` #9 on merge commit `038fdac`, 9 s:
+
+```text
+Stage "Molecule" skipped due to when conditional
+Stage "VM test" skipped due to when conditional
+ * [new tag]         v0.1.1 -> v0.1.1
+Released v0.1.1 at 038fdac
+Finished: SUCCESS
+```
+
+GitHub: tag `v0.1.1` points to `038fdac`, the head of `main`. `virsh list --all` shows no `role-vm-*`.
