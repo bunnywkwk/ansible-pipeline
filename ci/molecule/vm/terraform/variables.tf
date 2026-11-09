@@ -1,7 +1,8 @@
 variable "libvirt_uri" {
   type        = string
   description = "libvirt on the Jenkins host. Builds run there as jenkins (group libvirt). A separate KVM host needs only a new URI."
-  default     = "qemu:///system"
+  # socket=: straight to virtqemud. Through the default libvirt-sock, virtproxyd rejects builds run by the Jenkins service.
+  default = "qemu:///system?socket=/var/run/libvirt/virtqemud-sock"
 }
 
 variable "run_id" {
