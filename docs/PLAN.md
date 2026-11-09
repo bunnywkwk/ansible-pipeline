@@ -255,7 +255,7 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 **Goal:** a green `main` produces a version tag that is never moved, red code cannot reach `main`, and the tag is the only thing CD may deploy.
 
-**How it works:** on `main`, the gates run again, then the Release stage. Running the gates on `main` too avoids a lesson from `chrome_cis`, where the job's first scan tagged untested code on `main`. Release reads `VERSION`, fails unless it is `X.Y.Z`, and creates and pushes `v<VERSION>` if that tag does not exist. If the tag exists, it skips with a message and the build stays green.
+**How it works:** (changed 2026-11-09: `main` now runs Release only, see the table in Batch 4b; the first version follows) on `main`, the gates run again, then the Release stage. Running the gates on `main` too avoids a lesson from `chrome_cis`, where the job's first scan tagged untested code on `main`. Release reads `VERSION`, fails unless it is `X.Y.Z`, and creates and pushes `v<VERSION>` if that tag does not exist. If the tag exists, it skips with a message and the build stays green.
 
 **Steps**
 
@@ -281,19 +281,32 @@ One drill per gate or behaviour, no repeats (changed 2026-11-07: trimmed from 19
 
 **Goal:** a pull request is merged only after its role also passed on a real RHEL 9 VM. The `ubi9-init` container cannot test what a real host has: firewalld, SELinux enforcing, a real boot and systemd. Added 2026-11-07 at your request.
 
-**How it works (proposal, to settle at the start of the batch):**
+**What runs when (agreed 2026-11-09; the scope of the CI):**
 
-- Same playbooks, second place to run them: a Molecule scenario `vm` next to `default`, reusing `converge.yml` and `verify.yml`, with `webserver_manage_firewall: true`.
-- The scenario's create and destroy steps start and remove **one throwaway VM** from the golden image on this workstation's KVM (Terraform with the libvirt provider, run as `jenkins`; already in the `libvirt` group). This is the VM code CD reuses in Batch 6.
-- `verify.yml` also checks what only a VM has: the firewalld port is open, SELinux is enforcing.
-- Runs after the container test, on pull requests and `main` only, so a quick mistake still fails in seconds and drill branches do not start VMs.
+| Event | Runs | Why |
+| --- | --- | --- |
+| Push to a branch with no PR | Gates + container test | Fast check, about 1 minute |
+| PR opened or updated | Gates + **VM test** (no container) | The real test before a merge |
+| Merge to `main` | **Release only** | The PR already tested this exact code; the build only makes the tag |
+
+Gates = Secrets, Version, YAML lint, Ansible lint, Security. A branch with an open PR builds as the PR only. `main` must still build: nothing else can create the tag.
+
+Release tags only a PR merge commit (two parents), so a new repo's first commit is not tagged untested. The role's `main` ruleset allows merge commits only (squash has one parent and would never release). `main` now relies fully on the ruleset: no bypass, ever.
+
+**How it works:**
+
+- **Roles bring only role code (changed 2026-11-09, at your request).** Molecule moved from the role to `ansible-pipeline/ci/molecule/` (`default` for containers, `vm` for the VM). A build stage copies it over anything the role has and fills in the role name from `meta/main.yml`.
+- **No verify for now (changed 2026-11-09, at your request).** Molecule proves the role runs and is idempotent; checking what it does belongs to a separate audit on the host. So a role that runs clean but does the wrong thing passes, and the Batch 3 drill 6 catch no longer exists.
+- A role whose defaults need something containers lack adds an optional `ci-container-vars.yml` in its root (`webserver_manage_firewall: false`). It is used in the container test only; the VM runs the role's real defaults, so the firewall is on.
+- The scenario's create and destroy steps start and remove **one throwaway VM** from the golden image on this workstation's KVM (Terraform with the libvirt provider, run as `jenkins` on the Fedora host through local `qemu:///system`; no agent VM). This is the VM code CD reuses in Batch 6.
+- The VM scenario fails if SELinux is not enforcing.
+- Runs on pull requests only (changed 2026-11-09 from PRs and `main`).
 - The VM is destroyed at the end of every build, also after a failure or an abort (`post { always }`).
 
 **Settle first**
 
-- Where the RHEL 9 golden image is, and how the VM gets packages (subscription or a local repo); without repos, `dnf install nginx` fails.
-- VM size, and how the build reaches it (SSH key in Jenkins credentials).
-- Name of the new required check, or whether the VM test is part of the existing `pr-head` result.
+- Golden image: rebuild `rhel9-golden.qcow2` into pool `ci` (found missing 2026-11-09). Packages: each VM registers with Red Hat through cloud-init (`rhsm-org`, `rhsm-activation-key`).
+- SSH: one key per run, made by Molecule. Merge check: the VM test is a stage of the PR build, so the existing `pr-head` check covers it.
 
 **Done when**
 

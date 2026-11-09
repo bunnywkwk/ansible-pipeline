@@ -1,0 +1,62 @@
+---
+# Unregisters the test VM from Red Hat, then removes it with Terraform. Also runs before create, with nothing to remove.
+- name: Destroy | Find the test VM
+  hosts: localhost
+  gather_facts: false
+  vars:
+    destroy_config: "{{ lookup('ansible.builtin.file', molecule_instance_config, errors='ignore') | default('', true) | from_yaml }}"
+  tasks:
+    - name: Destroy | Add the VM for unregistering
+      ansible.builtin.add_host:
+        name: "{{ item.instance }}"
+        groups: destroy_vm
+        ansible_host: "{{ item.address }}"
+        ansible_user: root
+        ansible_ssh_private_key_file: "{{ item.identity_file }}"
+        ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+      loop: "{{ destroy_config or [] }}"
+      loop_control:
+        label: "{{ item.instance }}"
+
+- name: Destroy | Unregister from Red Hat
+  hosts: destroy_vm
+  gather_facts: false
+  tasks:
+    # Best effort: a VM that never registered, or no longer answers, must not stop its own removal.
+    - name: Destroy | subscription-manager unregister
+      ansible.builtin.command:
+        argv: [subscription-manager, unregister]
+      register: destroy_unregister
+      changed_when: destroy_unregister.rc == 0
+      failed_when: false
+      ignore_unreachable: true
+
+- name: Destroy | Remove the VM
+  hosts: localhost
+  gather_facts: false
+  vars:
+    destroy_tf_dir: "{{ molecule_scenario_directory }}/terraform"
+  tasks:
+    - name: Destroy | Terraform init
+      ansible.builtin.command:
+        argv: [terraform, "-chdir={{ destroy_tf_dir }}", init, -input=false, -no-color]
+      changed_when: false
+
+    - name: Destroy | Terraform destroy
+      ansible.builtin.command:
+        argv:
+          - terraform
+          - -chdir={{ destroy_tf_dir }}
+          - destroy
+          - -input=false
+          - -auto-approve
+          - -no-color
+          - -var=run_id={{ molecule_yml.platforms[0].name }}
+      register: destroy_tf
+      changed_when: "'Destroy complete! Resources: 0 destroyed' not in destroy_tf.stdout"
+
+    - name: Destroy | Empty the instance config
+      ansible.builtin.copy:
+        content: "{{ [] | to_yaml }}"
+        dest: "{{ molecule_instance_config }}"
+        mode: "0600"

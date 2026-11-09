@@ -1,0 +1,28 @@
+---
+# Container test for branch builds. Kept here, not in role repos: the pipeline
+# copies this folder to molecule/ in the build, over anything the role has.
+# Proves the role runs and is idempotent; checking what it does is out of scope.
+driver:
+  name: podman
+platforms:
+  - name: role-ubi9-${MOLECULE_RUN_ID:-local}
+    image: registry.access.redhat.com/ubi9/ubi-init:latest
+    pre_build_image: true
+    command: /usr/sbin/init
+    systemd: always
+provisioner:
+  name: ansible
+  # Switches for what containers lack, from the role's optional
+  # ci-container-vars.yml. Not used on the VM: a real host needs none.
+  ansible_args:
+    - -e
+    - "@${MOLECULE_SCENARIO_DIRECTORY}/vars/container.yml"
+scenario:
+  test_sequence:
+    # Installs the podman driver's own collection on a clean node.
+    - dependency
+    - destroy
+    - create
+    - converge
+    - idempotence
+    - destroy
