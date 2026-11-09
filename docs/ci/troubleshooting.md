@@ -118,3 +118,18 @@ Error: failed to connect: internal error: Cannot find start time for pid 143418
 **Fix:** connect straight to the QEMU daemon: `qemu:///system?socket=/var/run/libvirt/virtqemud-sock` (`ci/molecule/vm/terraform/variables.tf`). `PR-4` #2 passed.
 
 **Prevention:** test libvirt access from a Jenkins build, not from a login shell or `sudo -u jenkins`: those run in a different SELinux context.
+
+## VM test: `terraform init` 504 from github.com
+
+**Error** (`PR-5` #1, 2026-11-09; no VM was created)
+
+```text
+Error while installing dmacvicar/libvirt v0.8.3: could not query provider registry for registry.terraform.io/dmacvicar/libvirt:
+failed to retrieve authentication checksums for provider: the request failed after 2 attempts, please try again later: 504 Gateway Timeout returned from github.com
+```
+
+**Cause:** every new PR build downloaded the plugin again, and GitHub was timing out. The cleanup `terraform init` failed the same way: with a VM running, it could not have been removed.
+
+**Fix:** the plugin lives on the build node (`/opt/ci/terraform-plugins`) and the `Jenkinsfile` sets `TF_CLI_ARGS_init=-plugin-dir=…`. Local test with the network blocked: `TF_PLUGIN_CACHE_DIR` still failed, `-plugin-dir` worked.
+
+**Prevention:** when the plugin version in `main.tf` changes, update the copy on the node (setup step 41b).

@@ -28,6 +28,8 @@ pipeline {
     ANSIBLE_FORCE_COLOR = '0'
     PY_COLORS = '0'
     NO_COLOR = '1'
+    // Terraform's libvirt plugin from the build node, so a GitHub outage cannot fail a PR or stop a VM being removed.
+    TF_CLI_ARGS_init = '-plugin-dir=/opt/ci/terraform-plugins'
   }
 
   stages {
