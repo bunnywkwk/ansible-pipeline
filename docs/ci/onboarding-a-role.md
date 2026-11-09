@@ -1,6 +1,6 @@
 # Use the central CI for your role
 
-How to get a role repo built and released by [ansible-pipeline](../../README.md). You write role code only; the pipeline is never copied into your repo.
+How to get a role repo built and released by [ansible-pipeline](../../README.md). You write role code only. The pipeline and the tests come from `ansible-pipeline`. You do not need a VM: the PR test creates one for you.
 
 > **Status:** written from the first role, `ansible-role-webserver`. A second role has not been onboarded yet (Batch 5); report anything here that does not work.
 
@@ -18,12 +18,10 @@ ansible-role-<name>/
 ├── templates/               # if needed
 ├── requirements.yml         # collections the role uses
 ├── VERSION                  # X.Y.Z, e.g. 0.1.0
-├── README.md
-└── molecule/default/
-    ├── molecule.yml
-    ├── converge.yml
-    └── verify.yml
+└── README.md
 ```
+
+That is all. No `molecule/` folder: the pipeline's copy is used, and replaces any you add.
 
 Do **not** add a `Jenkinsfile`: it would be ignored (Batch 3 drill 8).
 
@@ -42,28 +40,16 @@ galaxy_info:
       versions: ["9"]
 ```
 
-**`molecule/default/converge.yml`** — import the role by that **same** full name. Molecule and ansible-lint link your checkout under it, so the test runs this commit, and ansible-lint can syntax-check the role's tasks. A name that does not match `meta/main.yml` fails with "role not found".
+The pipeline reads that name and runs your role under it. A `meta/main.yml` without `namespace` or `role_name` fails the build at `Test setup`.
+
+**`requirements.yml`** — every collection the role uses. CI starts from an empty collection set; a missing entry fails the test there even if it passes on your machine.
+
+**Optional: `ci-container-vars.yml`** in the repo root, if your role's defaults need something a container lacks. It is used in the container test only; the VM test runs your real defaults.
 
 ```yaml
-- name: Converge
-  hosts: all
-  gather_facts: false
-  tasks:
-    - name: Run the role from this checkout
-      ansible.builtin.import_role:
-        name: <namespace>.<name>
+---
+webserver_manage_firewall: false
 ```
-
-**`molecule/default/molecule.yml`** — keep from the webserver role:
-
-- platform name ending in `-${MOLECULE_RUN_ID:-local}`: CI sets a short unique ID, so parallel builds do not clash and the hostname stays under 64 characters
-- image `registry.access.redhat.com/ubi9/ubi-init:latest`, `command: /usr/sbin/init`, `systemd: always`
-- the written-out `test_sequence`: `dependency, destroy, create, converge, idempotence, verify, destroy`
-- `group_vars` to switch off what containers lack (the webserver role sets `webserver_manage_firewall: false`)
-
-**`molecule/default/verify.yml`** — check what the role is for (service up, page served, file present), with the expected values written out, not read from `defaults/`. A change of behaviour must then be a deliberate change to the test too (drill 6).
-
-**`requirements.yml`** — every collection the role uses. CI starts from an empty collection set; a missing entry fails Molecule there even if it passes on your machine.
 
 **Optional:** a `.yamllint`, `.ansible-lint`, `.gitleaks.toml` or `.checkov.yml` in the repo root changes that tool's rules for your role only. Without one, the tool's defaults apply.
 
@@ -74,10 +60,9 @@ With the same tools as CI (`/opt/ci`, see the setup guide):
 ```bash
 . /opt/ci/bin/activate
 yamllint . && ansible-lint --profile production && /opt/checkov/bin/checkov -d . --framework ansible --skip-download
-ANSIBLE_HOME=$(mktemp -d) molecule test     # empty Ansible home, like a fresh CI node
 ```
 
-Idempotence must report `changed=0`.
+The role itself is run by CI, not locally: the tests are not in your repo.
 
 ## 4. Ask the Jenkins admin to connect the repo
 
@@ -89,8 +74,8 @@ Three one-time steps, no pipeline change ([setup guide](setup-guide.md), "Adding
 
 ## 5. Work through pull requests
 
-1. Push a feature branch: Jenkins builds it within seconds and the commit shows ✓ or ✗.
-2. Open a pull request to `main`: the PR is built and must show `continuous-integration/jenkins/pr-head` green, with the branch up to date, before it can merge.
+1. Push a feature branch: Jenkins runs the gates and a container test, about 1 minute, and the commit shows ✓ or ✗.
+2. Open a pull request to `main`: Jenkins runs the gates and the role on a real RHEL 9 VM, about 4 minutes. `continuous-integration/jenkins/pr-head` must be green, with the branch up to date, before it can merge.
 3. Red? Open the build's console (link on the ✗). The failed stage says what to fix; see the gate table in the [README](../../README.md#gates).
 
 ## 6. Release

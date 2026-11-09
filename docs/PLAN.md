@@ -80,7 +80,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 2 — Central pipeline | CI | Every push and PR to the role runs the gates | Central `Jenkinsfile`, `role-ci/ansible-role-webserver` | Done (2026-11-07) |
 | 3 — Gate drills | CI | Every gate catches a real bad commit | Drill table with real output in `docs/ci/evidence.md` | Done (2026-11-07) |
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
-| 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Not started (next, from 2026-11-08) |
+| 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Done (2026-11-09); VM-only failure and red/aborted cleanup not run, at your request |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Not started |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
@@ -311,8 +311,8 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 **Done when**
 
 - A pull request shows the VM test green, and the merge rule needs it.
-- A change that works in the container but breaks on a real host (for example a firewalld port that is never opened) is red only in the VM test.
-- No VM is left after a green, a red and an aborted build.
+- A change that works in the container but breaks on a real host is red only in the VM test. (Not run, at your request.)
+- No VM is left after a green, a red and an aborted build. (Green proven; red and aborted not run, at your request.)
 
 ## Batch 5 — Any role, zero pipeline setup
 

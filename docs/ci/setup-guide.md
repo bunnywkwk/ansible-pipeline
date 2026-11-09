@@ -140,7 +140,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 ## Batch 1 — Template role
 
 24. **Write the role** in `ansible-role-webserver`: `defaults/` (variables), `meta/argument_specs.yml` (type checks), `tasks/` and `handlers/`, `templates/` (server block and page), `requirements.yml` (collections the role needs), `VERSION` (`0.1.0`).
-25. **Write the Molecule test** in `molecule/default/`: `molecule.yml` (one `ubi9-init` container and the test steps), `converge.yml` (runs the role from the checkout with `import_role: name: <namespace>.<role_name>` from `meta/main.yml`; static, so ansible-lint also syntax-checks the role's tasks), `verify.yml` (nginx up, page shows the message).
+25. **(Replaced in Batch 4b: tests now live in `ansible-pipeline/ci/molecule/`.)** Write the Molecule test in `molecule/default/`: `molecule.yml` (one `ubi9-init` container and the test steps), `converge.yml` (runs the role from the checkout with `import_role: name: <namespace>.<role_name>` from `meta/main.yml`; static, so ansible-lint also syntax-checks the role's tasks), `verify.yml` (nginx up, page shows the message).
 26. **Lint by hand:**
     ```bash
     . /opt/ci/bin/activate
@@ -169,6 +169,16 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 38. **Ruleset on `ansible-pipeline` `main`:** restrict deletions and block force pushes; direct pushes stay allowed.
 39. **Merge the first pull request:** the `main` build ends with `Released v0.1.0 at <commit>`.
 40. **To release later:** change `VERSION` in a pull request; a merge without it prints `release skipped`.
+
+## Batch 4b — PR test on a VM
+
+41. **Install on the host:** Terraform, Packer, KVM with libvirt, `genisoimage`; `jenkins` in group `libvirt`.
+42. **Build the golden image and put it in pool `ci`:** `~/ansible-cis/docs/local-laptop/updated-doc-setup/golden-image-rhel9.md`, steps 1–4. Plain RHEL 9.8; every test VM is a throwaway copy of it.
+43. **Jenkins credentials `rhsm-org`, `rhsm-activation-key`** (Secret text): each VM registers with Red Hat through cloud-init, to install packages.
+44. **Push `Jenkinsfile` and `ci/molecule/`:** the pipeline follows the event table in the README and copies the tests into each build.
+45. **Job → Branch Sources → delete "Discover pull requests from forks":** a fork's role code would otherwise run on this host.
+46. **Role ruleset on `main` → Allowed merge methods: Merge only:** Release tags only PR merge commits; squash has one parent and would never release.
+47. **Open a PR:** the console shows Terraform apply, `SELinux is enforcing`, converge, idempotence `changed=0`, destroy; `virsh list --all` then shows no `role-vm-*`.
 
 ## Adding another role repo (until Batch 5 automates it)
 

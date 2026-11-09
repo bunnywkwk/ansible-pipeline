@@ -101,3 +101,20 @@ fatal: unable to access 'https://github.com/bunnywkwk/ansible-role-webserver.git
 **Fix:** token `jenkins-laptop` → Repository permissions → Contents = Read and write → Update; re-run the `main` build. No tag was created on GitHub by the failed build.
 
 **Prevention:** setup step 3 lists Contents read and write from Batch 4 on.
+
+## VM test: Terraform "Cannot find start time for pid"
+
+**Error** (`PR-4` #1, 2026-11-09, first VM test; no VM was created)
+
+```text
+Error: failed to connect: internal error: Cannot find start time for pid 143418
+  on main.tf line 13, in provider "libvirt"
+```
+
+`journalctl -u virtproxyd` showed the same line at the same second.
+
+**Cause:** `qemu:///system` reached libvirt through `virtproxyd`, which could not read the Terraform process started by the Jenkins service. The same URI worked from a login shell. Probably an SELinux denial (`virtproxyd_t` against `unconfined_service_t`); the audit log was not checked.
+
+**Fix:** connect straight to the QEMU daemon: `qemu:///system?socket=/var/run/libvirt/virtqemud-sock` (`ci/molecule/vm/terraform/variables.tf`). `PR-4` #2 passed.
+
+**Prevention:** test libvirt access from a Jenkins build, not from a login shell or `sudo -u jenkins`: those run in a different SELinux context.

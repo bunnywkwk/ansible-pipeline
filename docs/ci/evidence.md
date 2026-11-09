@@ -208,3 +208,45 @@ playbook: site.yml
 | Red PR cannot be merged; direct push to `main` refused | Direct push: refused (seen by you; message not captured). Red PR: not run, at your request; `pr-head` is a required check in the ruleset (read back above) |
 | Moving or deleting `v0.1.0` refused | Not run, at your request; ruleset `release-tags` read back with deletion, update, non_fast_forward |
 | Release usable through `requirements.yml` | Passed (above); a real run on a host comes in the CD batches |
+
+## Batch 4b — PR test on a VM (2026-11-09)
+
+Pipeline `12570d0`. Role branch `feature/role-only` (`45091e4`): `molecule/` removed, role code only.
+
+Branch build, push with no PR: all gates, `Testing role bunnywkwk.webserver`, container `role-ubi9-e0` converge `changed=5`, idempotence `changed=0`, `Finished: SUCCESS`.
+
+`PR-4` #2, first real VM run, 3 min 39 s in total:
+
+```text
+Secrets      no leaks found
+Ansible lint Passed: 0 failure(s), 0 warning(s) in 15 files processed of 23 encountered. Profile 'production' was required, and it passed.
+Security     Passed checks: 3, Failed checks: 0, Skipped checks: 0
+Molecule     skipped (PR)
+VM test      Terraform apply → SSH answers → cloud-init finished → SELinux is enforcing: ok
+             converge    role-vm-e0 : ok=7 changed=6 failed=0   (Install nginx 1 min 36 s; Open the port in firewalld ran)
+             idempotence role-vm-e0 : ok=6 changed=0 failed=0
+             destroy     unregistered from Red Hat, Terraform destroy
+Release      skipped (not main)
+Finished: SUCCESS
+```
+
+GitHub, commit `45091e4`: `continuous-integration/jenkins/pr-head` success. After the build: `virsh list --all` shows no `role-vm-*`; pool `ci` holds only `rhel9-golden.qcow2`.
+
+| Done-when check | Result |
+| --- | --- |
+| PR shows the VM test green, merge rule needs it | Passed: VM test is a stage of `pr-head`, the required check |
+| Change that breaks only on a real host is red only on the VM | Not run, at your request: the concern is the pipeline, not the role |
+| No VM left after a green build | Passed (above) |
+| No VM left after a red and an aborted build | Not run, at your request |
+
+PR-4 merged. `main` #8 on merge commit `ace056f` (two parents), 7 s:
+
+```text
+Stage "Gates" skipped due to when conditional
+Stage "Molecule" skipped due to when conditional
+Stage "VM test" skipped due to when conditional
+Tag v0.1.0 already exists: release skipped. Bump VERSION in a pull request to release.
+Finished: SUCCESS
+```
+
+Settings read back: ruleset `allowed_merge_methods: ['merge']`; job config has no fork discovery.
