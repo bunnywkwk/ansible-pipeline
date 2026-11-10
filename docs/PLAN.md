@@ -81,7 +81,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 3 — Gate drills | CI | Every gate catches a real bad commit | Drill table with real output in `docs/ci/evidence.md` | Done (2026-11-07) |
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
 | 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Done (2026-11-09); VM-only failure and red/aborted cleanup not run, at your request |
-| 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | In progress |
+| 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Done (2026-11-10); `Jenkinsfile` change reaching both roles waits for the next real change |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
 | 8 — CD job | CD | Staging → approval → production in one Jenkins job | `cd/deploy-webserver` job + deploy records | Not started |
@@ -322,9 +322,9 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 
 - Dropped 2026-11-10: template repo. It would give new roles nginx code to delete; the layout in the onboarding guide does the job.
 - Changed 2026-11-10: one multibranch job per role stays. Organization folder is for later: on a personal account the webhook and rules stay per repo, and it would replace the current job and its build history.
-- [ ] Create a second role, `ansible-role-motd`, from the onboarding guide; role code only.
+- [x] Create a second role, `ansible-role-motd`, from the onboarding guide; role code only.
 - [x] Docs in `ansible-pipeline`: `README.md` (what it is, diagram, gates, releases, limits), `docs/ci/onboarding-a-role.md`, `docs/ci/troubleshooting.md` (written 2026-11-07, before the second role; changed: the gate table lives in the README instead of a separate `docs/ci/gates.md`).
-- [ ] Follow `docs/ci/onboarding-a-role.md` for the second role and fix what it gets wrong.
+- [x] Follow `docs/ci/onboarding-a-role.md` for the second role and fix what it gets wrong.
 
 **Done when**
 

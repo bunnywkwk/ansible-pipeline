@@ -133,3 +133,18 @@ failed to retrieve authentication checksums for provider: the request failed aft
 **Fix:** the plugin lives on the build node (`/opt/ci/terraform-plugins`) and the `Jenkinsfile` sets `TF_CLI_ARGS_init=-plugin-dir=…`. Local test with the network blocked: `TF_PLUGIN_CACHE_DIR` still failed, `-plugin-dir` worked.
 
 **Prevention:** when the plugin version in `main.tf` changes, update the copy on the node (setup step 41b).
+
+## New role job lists another role's branches, all red
+
+**Error** (`role-ci/ansible-role-motd`, 2026-11-10; job made with "Copy from" `ansible-role-webserver`)
+
+```text
++ git clean -ffdx -q
+fatal: not a git repository (or any of the parent directories): .git
+```
+
+**Cause:** "Copy from" also copies the old job's branches. Each one built once with no code, failed at its first command, and was then disabled. No commit, tag or VM of the old role was touched.
+
+**Fix:** delete the new job and create it fresh.
+
+**Prevention:** never use "Copy from" for a role job (setup guide, "Adding another role repo").

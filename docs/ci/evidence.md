@@ -280,3 +280,55 @@ Finished: SUCCESS
 ```
 
 GitHub: tag `v0.1.1` points to `038fdac`, the head of `main`. `virsh list --all` shows no `role-vm-*`.
+
+## Batch 5 — A second role (2026-11-10)
+
+Role `ansible-role-motd`: one task, no `molecule/`, `requirements.yml`, `handlers/` or `ci-container-vars.yml`. Pipeline `a2a02dd`, no pipeline change. Job created from the setup guide, "Adding another role repo".
+
+Branch `feature/reword-message` #1, commit `9aa94f9`:
+
+```text
+Push event to branch feature/reword-message
+no leaks found
+VERSION 0.1.0
+yamllint: no problems found
+Testing role bunnywkwk.motd
+Passed: 0 failure(s), 0 warning(s) in 7 files processed of 11 encountered. Profile 'production' was required, and it passed.
+WARNING  [default > dependency] Missing roles requirements file: requirements.yml
+converge    role-ubi9-e0 : ok=2 changed=1 failed=0
+idempotence role-ubi9-e0 : ok=2 changed=0 failed=0
+Stage "VM test" skipped due to when conditional
+Stage "Release" skipped due to when conditional
+Finished: SUCCESS
+```
+
+`PR-1` #1, same commit:
+
+```text
+Pull request #1 opened
+Stage "Molecule" skipped due to when conditional
+Create | SELinux is enforcing
+converge    role-vm-e0 : ok=2 changed=1 failed=0
+idempotence role-vm-e0 : ok=2 changed=0 failed=0
+Destroy | subscription-manager unregister
+Finished: SUCCESS
+```
+
+PR #1 merged. `main` #2 on merge commit `e153e89` (two parents):
+
+```text
+Stage "Gates" skipped due to when conditional
+Stage "Molecule" skipped due to when conditional
+Stage "VM test" skipped due to when conditional
+ * [new tag]         v0.1.0 -> v0.1.0
+Released v0.1.0 at e153e89
+Finished: SUCCESS
+```
+
+GitHub: `continuous-integration/jenkins/branch` and `pr-head` success on `9aa94f9`; tag `v0.1.0` points to `e153e89`, the head of `main`. `virsh list --all` shows no `role-vm-*`. Rulesets read back: `main` needs a PR, merge only, `pr-head`, up to date; tags `v*` block deletion, force push and update.
+
+| Done-when check | Result |
+| --- | --- |
+| Second role green with only the documented job setup | Passed (above) |
+| Following the guides, a new role reaches green | Passed. Two fixes came from it: "Copy from" removed, `requirements.yml` marked optional |
+| A `Jenkinsfile` change reaches both roles | Not run: waits for the next real pipeline change |

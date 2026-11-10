@@ -97,6 +97,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
     | Setting | Value |
     | --- | --- |
     | Branch Sources → GitHub | credential `github-crendentials`, URL `https://github.com/bunnywkwk/ansible-role-webserver.git` |
+    | Discover pull requests from origin | **The current pull request revision**: the required check is `pr-head` |
     | Build Configuration → Mode | **by Remote Jenkins File Provider Plugin** |
     | Local Marker | `meta/main.yml` |
     | Script Path | `Jenkinsfile` |
@@ -181,6 +182,21 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 46. **Role ruleset on `main` → Allowed merge methods: Merge only:** Release tags only PR merge commits; squash has one parent and would never release.
 47. **Open a PR:** the console shows Terraform apply, `SELinux is enforcing`, converge, idempotence `changed=0`, destroy; `virsh list --all` then shows no `role-vm-*`.
 
-## Adding another role repo (until Batch 5 automates it)
+## Adding another role repo
 
-Add the repo to the token's repository access (step 3), create its multibranch job (step 16), add the webhook (step 19) and the rulesets (steps 36–37). The pipeline itself needs no change. What the role repo itself needs: [onboarding-a-role.md](onboarding-a-role.md).
+Once per role, in this order. The pipeline needs no change. What the role repo needs: [onboarding-a-role.md](onboarding-a-role.md).
+
+Do not use Jenkins "Copy from": it also copies every branch of the old job.
+
+1. **Create the repo** on GitHub: `ansible-role-<name>`, public, empty. Push the role to `main`.
+2. **Give the token access:** GitHub → Settings → Developer settings → Fine-grained tokens → `jenkins-laptop` → Repository access → add the repo → Update. Do not regenerate it.
+3. **Create the job:** Jenkins → `role-ci` → New Item → `ansible-role-<name>` → Multibranch Pipeline.
+4. **Branch Sources → Add source → GitHub:** credential `github-crendentials`, URL `https://github.com/bunnywkwk/ansible-role-<name>.git`, Validate.
+5. **Behaviours:** Discover branches = *Exclude branches that are also filed as PRs*. Discover pull requests from origin = *The current pull request revision*. Delete *Discover pull requests from forks*.
+6. **Build Configuration:** Mode *by Remote Jenkins File Provider Plugin*, Local Marker `meta/main.yml`, Script Path `Jenkinsfile`.
+7. **Remote Jenkinsfile SCM → Git:** URL `https://github.com/bunnywkwk/ansible-pipeline.git`, credential `github-crendentials`, branch `main`.
+8. **Scan Multibranch Pipeline Triggers:** Periodically if not otherwise run, 1 day. Save. `main` builds and prints `Not a pull request merge: no release.` (Optional)
+9. **Webhook:** role repo → Settings → Webhooks → Add webhook. Payload URL = the smee URL (`grep -o 'https://smee.io/[^ ]*' ~/.config/systemd/user/smee-jenkins.service`), content type `application/json`, events Pushes and Pull requests.
+10. **Ruleset on `main`:** role repo → Settings → Rulesets → New branch ruleset, Enforcement status: Active, Target Branches: add target Include default branch. Turn on: restrict deletions, block force pushes, require a pull request with Allowed merge methods = Merge only, require status check `continuous-integration/jenkins/pr-head` with branches up to date. Type the check name by hand: a new repo has not run it yet.
+11. **Ruleset on tags:** New tag ruleset, Active, pattern `v*`. Turn on restrict updates and restrict deletions only: Jenkins must still create tags.
+12. **Test it:** push a branch, expect gates and container test green. Open a pull request, expect gates and VM test green. Merge it, expect `Released v<VERSION> at <commit>`.

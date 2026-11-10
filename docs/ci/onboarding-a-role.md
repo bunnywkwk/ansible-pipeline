@@ -2,7 +2,7 @@
 
 How to get a role repo built and released by [ansible-pipeline](../../README.md). You write role code only. The pipeline and the tests come from `ansible-pipeline`. You do not need a VM: the PR test creates one for you.
 
-> **Status:** written from the first role, `ansible-role-webserver`. A second role has not been onboarded yet (Batch 5); report anything here that does not work.
+> **Status:** used for two roles, `ansible-role-webserver` and `ansible-role-motd`; report anything here that does not work.
 
 ## 1. Start the repo
 
@@ -16,7 +16,7 @@ ansible-role-<name>/
 ├── tasks/main.yml
 ├── handlers/main.yml        # if needed
 ├── templates/               # if needed
-├── requirements.yml         # collections the role uses
+├── requirements.yml         # only if the role uses collections
 ├── VERSION                  # X.Y.Z, e.g. 0.1.0
 └── README.md
 ```
@@ -42,7 +42,7 @@ galaxy_info:
 
 The pipeline reads that name and runs your role under it. A `meta/main.yml` without `namespace` or `role_name` fails the build at `Test setup`.
 
-**`requirements.yml`** — every collection the role uses. CI starts from an empty collection set; a missing entry fails the test there even if it passes on your machine.
+**`requirements.yml`** — every collection the role uses; no collections, no file. CI starts from an empty collection set; a missing entry fails the test there even if it passes on your machine.
 
 **Optional: `ci-container-vars.yml`** in the repo root, if your role's defaults need something a container lacks. It is used in the container test only; the VM test runs your real defaults.
 
