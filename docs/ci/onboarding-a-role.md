@@ -6,7 +6,7 @@ How to get a role repo built and released by [ansible-pipeline](../../README.md)
 
 ## 1. Start the repo
 
-Name it `ansible-role-<name>`, public, on GitHub. Copy the layout of [ansible-role-webserver](https://github.com/bunnywkwk/ansible-role-webserver) (a template repo from Batch 5):
+Name it `ansible-role-<name>`, public, on GitHub. Copy the layout of [ansible-role-webserver](https://github.com/bunnywkwk/ansible-role-webserver):
 
 ```text
 ansible-role-<name>/
@@ -74,8 +74,8 @@ Three one-time steps, no pipeline change ([setup guide](setup-guide.md), "Adding
 
 ## 5. Work through pull requests
 
-1. Push a feature branch: Jenkins runs the gates and a container test, about 1 minute, and the commit shows ✓ or ✗.
-2. Open a pull request to `main`: Jenkins runs the gates and the role on a real RHEL 9 VM, about 4 minutes. `continuous-integration/jenkins/pr-head` must be green, with the branch up to date, before it can merge.
+1. Push a feature branch: Jenkins runs the gates and a container test, and the commit shows ✓ or ✗.
+2. Open a pull request to `main`: Jenkins runs the gates and the role on a real RHEL 9 VM. `continuous-integration/jenkins/pr-head` must be green, with the branch up to date, before it can merge.
 3. Red? Open the build's console (link on the ✗). The failed stage says what to fix; see the gate table in the [README](../../README.md#gates).
 
 ## 6. Release

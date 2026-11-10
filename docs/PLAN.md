@@ -24,7 +24,7 @@ A lab of a full Ansible role delivery pipeline on Jenkins, built **CI first**. C
 | Jenkins | Jenkins 2.580.2 already on this workstation (RPM, user `jenkins`) | Controller and builds on one machine |
 | Build node | Built-in node, label `ansible` | shortcut: builds can read the controller's files; move to a separate agent before real use |
 | CI pipeline | Central `Jenkinsfile` in `ansible-pipeline`; Remote Jenkinsfile Provider plugin | Role repos contain no pipeline code; a marker file (`meta/main.yml`) marks a branch as buildable |
-| CI jobs | Jenkins folder `role-ci/` | One multibranch job per role, or an organization folder for `ansible-role-*` (Batch 5) |
+| CI jobs | Jenkins folder `role-ci/` | One multibranch job per role; organization folder to explore later |
 | Triggers | GitHub webhook relayed by smee.io to `http://localhost:8080/github-webhook/`; daily repository scan as a backup | GitHub cannot reach `localhost:8080` directly; the smee client on the workstation forwards each event (changed 2026-11-07 from 5-minute scans, at your request) |
 | Tools | `/opt/ci` (Python 3.11, ansible-core 2.16) from `ci/requirements-tools.txt`, `/opt/checkov` (Python 3.11) from `ci/requirements-checkov.txt`, gitleaks 8.30.1 binary (checksum verified) | Pinned versions in the repo; Checkov is kept apart because of its dependency pins |
 | Security scanner | Checkov (`--framework ansible`) | Flags insecure task settings, such as `validate_certs: false` |
@@ -81,7 +81,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 3 — Gate drills | CI | Every gate catches a real bad commit | Drill table with real output in `docs/ci/evidence.md` | Done (2026-11-07) |
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
 | 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Done (2026-11-09); VM-only failure and red/aborted cleanup not run, at your request |
-| 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Not started |
+| 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | In progress |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
 | 8 — CD job | CD | Staging → approval → production in one Jenkins job | `cd/deploy-webserver` job + deploy records | Not started |
@@ -320,16 +320,16 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 
 **Steps**
 
-- [ ] Mark `ansible-role-webserver` as a GitHub template repository.
-- [ ] Replace the per-role job with a GitHub organization folder in `role-ci/` that discovers repos named `ansible-role-*` with the same remote-Jenkinsfile settings. If the plugin does not support organization folders, keep one multibranch job per role and document the one-minute setup.
-- [ ] Create a second role from the template (a small one, such as `ansible-role-motd`); change only role code.
+- Dropped 2026-11-10: template repo. It would give new roles nginx code to delete; the layout in the onboarding guide does the job.
+- Changed 2026-11-10: one multibranch job per role stays. Organization folder is for later: on a personal account the webhook and rules stay per repo, and it would replace the current job and its build history.
+- [ ] Create a second role, `ansible-role-motd`, from the onboarding guide; role code only.
 - [x] Docs in `ansible-pipeline`: `README.md` (what it is, diagram, gates, releases, limits), `docs/ci/onboarding-a-role.md`, `docs/ci/troubleshooting.md` (written 2026-11-07, before the second role; changed: the gate table lives in the README instead of a separate `docs/ci/gates.md`).
-- [ ] Follow `docs/ci/onboarding-a-role.md` for the second role and fix what it gets wrong. Role README in the template.
+- [ ] Follow `docs/ci/onboarding-a-role.md` for the second role and fix what it gets wrong.
 
 **Done when**
 
 - The second role's repo is built and green without any change in Jenkins or `ansible-pipeline` (or with only the documented job setup).
-- A change to the central `Jenkinsfile` reaches both roles on their next build.
+- A change to the central `Jenkinsfile` reaches both roles on their next build (changed 2026-11-10: proven by the next real pipeline change, no edit made only for a test).
 - Following only `docs/ci/onboarding-a-role.md`, a new role reaches a green build.
 
 **CI is done here.** Its output for CD: role tags `v<VERSION>` that passed every gate.

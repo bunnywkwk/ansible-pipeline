@@ -10,11 +10,11 @@ Central CI for Ansible roles. A role repo holds only role code. Jenkins brings t
 
 ![What the pipeline does: any role gets quick checks and a container test on a branch, quick checks and a test on a fresh real RHEL 9 VM when asking to merge, and a permanent version tag after the merge. Any failed check stops there.](docs/ci/pipeline.svg)
 
-| Event | Runs | Time |
-| --- | --- | --- |
-| Push to a branch with no PR | Gates + container test | about 1 minute |
-| PR opened or updated | Gates + **VM test** | about 4 minutes |
-| Merge to `main` | **Release only** | seconds |
+| Event | Runs |
+| --- | --- |
+| Push to a branch with no PR | Gates + container test |
+| PR opened or updated | Gates + **VM test** |
+| Merge to `main` | **Release only** |
 
 A branch with an open PR builds as the PR only. `main` needs no tests: the PR must be green and up to date, so it merges exactly what was tested.
 
@@ -55,18 +55,6 @@ After every branch and PR build, `post` removes any container or VM left by an a
       scm: git
       version: v0.1.0
   ```
-
-## Build it yourself
-
-Full commands in the [setup guide](docs/ci/setup-guide.md); in short:
-
-1. Two public GitHub repos: `ansible-pipeline` (this) and a role repo.
-2. A fine-grained token for the role repos: Contents read and write, Metadata and Pull requests read, Commit statuses read and write.
-3. Build node: subordinate IDs and linger for `jenkins` (rootless Podman), `/opt/ci` and `/opt/checkov` venvs from `ci/requirements-*.txt`, gitleaks binary (checksum verified), Terraform, `jenkins` in group `libvirt`, the RHEL 9 golden image in libvirt pool `ci`.
-4. Jenkins: plugins (GitHub Branch Source, Remote Jenkinsfile Provider, …), label `ansible` on the build node, credentials `github-crendentials`, `rhsm-org`, `rhsm-activation-key`, folder `role-ci`.
-5. Per role repo: a multibranch job in "Remote Jenkins File Provider" mode, marker `meta/main.yml`, Jenkinsfile from this repo's `main`, no pull requests from forks.
-6. Webhook through a smee channel, smee client as a user service.
-7. GitHub rulesets: role `main` (PR + `pr-head` + up to date, merge commits only), role tags `v*` (no update or delete), this repo's `main` (no force push or delete).
 
 ## Repo layout
 
