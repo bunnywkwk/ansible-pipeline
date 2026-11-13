@@ -8,13 +8,6 @@
     create_key: "{{ molecule_ephemeral_directory }}/id_ed25519"
     create_instance: "{{ molecule_yml.platforms[0].name }}"
   tasks:
-    - name: Create | Red Hat registration is set (Jenkins credentials rhsm-org, rhsm-activation-key)
-      ansible.builtin.assert:
-        that:
-          - lookup('ansible.builtin.env', 'TF_VAR_rhsm_org') | length > 0
-          - lookup('ansible.builtin.env', 'TF_VAR_rhsm_activation_key') | length > 0
-        fail_msg: "Set TF_VAR_rhsm_org and TF_VAR_rhsm_activation_key: the VM must register to install packages."
-
     - name: Create | SSH key for this run
       ansible.builtin.command:
         argv: [ssh-keygen, -q, -t, ed25519, -N, "", -C, molecule, -f, "{{ create_key }}"]
@@ -69,7 +62,7 @@
       ansible.builtin.wait_for_connection:
         timeout: 600
 
-    # cloud-init registers the VM with Red Hat; the role's dnf tasks need that finished.
+    # cloud-init sets the hostname and root key; shared/register.yml registers after it.
     - name: Create | cloud-init finished
       ansible.builtin.command:
         argv: [cloud-init, status, --wait]

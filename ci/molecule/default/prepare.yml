@@ -1,43 +1,15 @@
 ---
-# Makes the container close to the RHEL 9 golden image before the role
-# runs, like ansible-lockdown's prepare.yml: registers with Red Hat for the
-# full repos (UBI has no firewalld), installs what a RHEL minimal install
-# has, starts firewalld. Runs once, before converge; not in idempotence.
-- name: Prepare
+# Container test, before converge (like ansible-lockdown's prepare.yml):
+# register, then make the container close to the RHEL 9 golden image.
+# The VM scenario runs only ../shared/register.yml: it already is one.
+- name: Register with Red Hat
+  ansible.builtin.import_playbook: ../shared/register.yml
+
+- name: Make the container look like the VM
   hosts: all
   gather_facts: false
-  vars:
-    prepare_rhsm_org: "{{ lookup('ansible.builtin.env', 'RHSM_ORG') }}"
-    prepare_rhsm_key: "{{ lookup('ansible.builtin.env', 'RHSM_ACTIVATION_KEY') }}"
   tasks:
-    - name: Prepare | Red Hat registration is set
-      ansible.builtin.assert:
-        that:
-          - prepare_rhsm_org | length > 0
-          - prepare_rhsm_key | length > 0
-        fail_msg: >-
-          Set RHSM_ORG and RHSM_ACTIVATION_KEY (Jenkins credentials
-          rhsm-org, rhsm-activation-key): the container registers to get
-          the full RHEL repos.
-        quiet: true
-
-    - name: Prepare | Install subscription-manager (from UBI)
-      ansible.builtin.dnf:
-        name: subscription-manager
-        state: present
-
-    - name: Prepare | Register with Red Hat
-      ansible.builtin.command:
-        argv:
-          - subscription-manager
-          - register
-          - --org
-          - "{{ prepare_rhsm_org }}"
-          - --activationkey
-          - "{{ prepare_rhsm_key }}"
-        creates: /etc/pki/consumer/cert.pem
-      no_log: true
-
+    # UBI has no firewalld: it comes from the RHEL repos after register.
     - name: Prepare | Install what a RHEL 9 minimal install has
       ansible.builtin.dnf:
         name:

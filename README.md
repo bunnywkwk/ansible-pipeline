@@ -61,6 +61,7 @@ After every branch and PR build, `post` removes any container or VM left by an a
 | Path | Holds |
 | --- | --- |
 | `Jenkinsfile` | The pipeline, for every role |
+| `ci/molecule/shared/` | Converge, Red Hat register and unregister, used by both scenarios |
 | `ci/molecule/default/` | Container test scenario, copied into every branch build |
 | `ci/molecule/vm/` | VM test scenario and its Terraform, copied into PR builds |
 | `ci/requirements-tools.txt` | Pinned ansible-core 2.16, ansible-lint, yamllint, Molecule (`/opt/ci`) |

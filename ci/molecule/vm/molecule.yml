@@ -13,12 +13,18 @@ provisioner:
   playbooks:
     create: create.yml
     destroy: destroy.yml
-    converge: ../default/converge.yml
+    # Shared with the container test: same converge, Red Hat register and unregister.
+    # No container steps: the VM already is the golden image.
+    converge: ../shared/converge.yml
+    prepare: ../shared/register.yml
+    cleanup: ../shared/unregister.yml
 scenario:
   # No dependency step: the prerun installs the role's collections, and this driver needs none.
   test_sequence:
     - destroy
     - create
+    - prepare
     - converge
     - idempotence
+    - cleanup
     - destroy

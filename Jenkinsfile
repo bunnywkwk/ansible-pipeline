@@ -88,7 +88,7 @@ pipeline {
               rm -rf .pipeline
               [ -n "$CHANGE_ID" ] || rm -rf molecule/vm     # the VM scenario is for PR builds only
               ROLE=$(python -c "import yaml; g = yaml.safe_load(open('meta/main.yml'))['galaxy_info']; print(g['namespace'] + '.' + g['role_name'])")
-              sed -i "s/ROLE_FQCN/$ROLE/" molecule/default/converge.yml
+              sed -i "s/ROLE_FQCN/$ROLE/" molecule/shared/converge.yml
               mkdir molecule/default/vars       # a vars/ folder, so ansible-lint does not read it as a playbook
               if [ -f ci-container-vars.yml ]; then cp ci-container-vars.yml molecule/default/vars/container.yml
               else printf -- '---\n{}\n' > molecule/default/vars/container.yml; fi
@@ -125,7 +125,7 @@ pipeline {
     stage('Molecule') {
       when { allOf { not { branch 'main' }; not { changeRequest() } } }
       steps {
-        // The container registers with Red Hat in prepare.yml, so it gets the same repos as the VM.
+        // The container registers with Red Hat (shared/register.yml), so it gets the same repos as the VM.
         withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
                          string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
         sh '''
@@ -144,9 +144,9 @@ pipeline {
     stage('VM test') {
       when { changeRequest() }
       steps {
-        // The VM registers with Red Hat through cloud-init, so the role's dnf tasks have packages.
-        withCredentials([string(credentialsId: 'rhsm-org', variable: 'TF_VAR_rhsm_org'),
-                         string(credentialsId: 'rhsm-activation-key', variable: 'TF_VAR_rhsm_activation_key')]) {
+        // The VM registers with Red Hat (shared/register.yml), like the container, so the role's dnf tasks have packages.
+        withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
+                         string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
           sh '''
             . /opt/ci/bin/activate
             terraform version | head -1
