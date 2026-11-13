@@ -148,3 +148,25 @@ fatal: not a git repository (or any of the parent directories): .git
 **Fix:** delete the new job and create it fresh.
 
 **Prevention:** never use "Copy from" for a role job (setup guide, "Adding another role repo").
+
+## Container test: `loginctl enable-linger` "Could not activate remote peer"
+
+**Error** (`role-ci/ansible-role-jenkins`, `staging` #4, 2026-11-13)
+
+```text
+TASK [bunnywkwk.jenkins : PODMAN | Enable linger for jenkins]
+"stderr": "Could not enable linger: Could not activate remote peer."
+```
+
+**Cause:** the `ubi9/ubi-init` image masks `systemd-logind.service` in its own build (`systemctl mask ... systemd-logind.service ...`, seen in the image history). `loginctl` asks logind over D-Bus and gets no answer. `privileged: true` alone did not help: the unit is switched off, not blocked.
+
+**Fix:** `ci/molecule/container/prepare.yml` unmasks and starts `systemd-logind`. `staging` #5 passed.
+
+**Prevention:** a task that works on a VM but not in the container: check the image history for masked units (`skopeo inspect --config docker://<image>`).
+
+## Container test: firewalld is not in the UBI repos
+
+**Seen** (2026-11-13, checking the public UBI 9 repo metadata before writing `prepare.yml`): `firewalld`, `audit` and `chrony` are not in UBI 9 baseos or appstream. An unregistered `ubi9-init` cannot install them.
+
+**Fix:** the container registers with Red Hat first (`shared/register.yml`, Jenkins credentials `rhsm-org`, `rhsm-activation-key`; `SMDEV_CONTAINER_OFF=1` lets `subscription-manager` run in a container). `cleanup` unregisters, also after an abort.
+

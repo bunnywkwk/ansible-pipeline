@@ -33,9 +33,6 @@ resource "libvirt_cloudinit_disk" "seed" {
     ssh_pwauth: false
     ssh_authorized_keys:
       - ${trimspace(var.ssh_public_key)}
-    rh_subscription:
-      org: "${var.rhsm_org}"
-      activation-key: "${var.rhsm_activation_key}"
   EOT
 }
 

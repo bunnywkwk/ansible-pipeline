@@ -332,3 +332,48 @@ GitHub: `continuous-integration/jenkins/branch` and `pr-head` success on `9aa94f
 | Second role green with only the documented job setup | Passed (above) |
 | Following the guides, a new role reaches green | Passed. Two fixes came from it: "Copy from" removed, `requirements.yml` marked optional |
 | A `Jenkinsfile` change reaches both roles | Not run: waits for the next real pipeline change |
+
+## Batch 5b — Container test like the VM (2026-11-13)
+
+Pipeline branch `container-prepare`, merged to `main` the same day. Jobs `ansible-role-jenkins` and `ansible-role-registry` pointed at it for the test.
+
+`ansible-role-jenkins` `staging` #4 (registered, packages, `privileged`; logind still masked):
+
+```text
+Prepare | Register with Red Hat                    changed
+Prepare | Install what a RHEL 9 minimal install has changed
+Prepare | Start firewalld, as on the VM            changed
+PODMAN | Enable linger for jenkins
+"stderr": "Could not enable linger: Could not activate remote peer."
+Cleanup | Unregister from Red Hat                  changed
+Finished: FAILURE
+```
+
+`staging` #5, logind started in prepare:
+
+```text
+Prepare | Start systemd-logind, as on the VM       changed
+PODMAN | Enable linger for jenkins                 changed
+default > idempotence: Executed: Successful
+default > cleanup: Executed: Successful
+Finished: SUCCESS
+```
+
+`ansible-role-registry` `staging` #2, new layout (`container/`, `shared/site.yml`), no `ci/` folder in the role; the role runs Podman inside the test container:
+
+```text
+Testing role bunnywkwk.registry
+SERVICE | Start the registry                       changed (5 s)
+converge     role-ubi9-e0 : ok=8 changed=8 failed=0
+idempotence  role-ubi9-e0 : ok=7 changed=0 failed=0
+container > cleanup: Executed: Successful
+Finished: SUCCESS
+```
+
+| Done-when check | Result |
+| --- | --- |
+| jenkins and registry green in the container with nothing added to the role | Passed (#5, #2) |
+| PR VM test with `shared/register.yml` | Not run yet |
+| A role `ci/` folder (`site.yml`, `group_vars`) in Jenkins | Not run yet; local dry run only: `Play: ci/site.yml`, `Site variables: ci/group_vars`, container got `container.yml`, VM got `vm.yml` |
+| The registry answers on port 5000 | Not checked: no verify step |
+

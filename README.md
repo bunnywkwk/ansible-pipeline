@@ -31,7 +31,7 @@ Gates 1–5 run on branches and PRs, cheapest first; the first red stage stops t
 | YAML lint | yamllint 1.38.0 | Broken YAML: indentation, syntax | Drill 1 | Fix the file and line printed (`file:line:col`) |
 | Ansible lint | ansible-lint 26.11.0, profile `production` | Unknown modules, bad Ansible practice (`shell` for a package, no `changed_when`) | Drills 2 and 3 | Read the rule name; its docs link explains the fix |
 | Security | Checkov 3.4.3 | Insecure settings such as `validate_certs: false` | Drill 5 | Fix the setting; skip only with a reason inside the task (`# checkov:skip=ID: reason`) |
-| Container test | Molecule 26.9.0, Podman, `ubi9-init` | The role does not run or is not idempotent (branch builds) | Drill 7 | Read the failing step and task in the console |
+| Container test | Molecule 26.9.0, Podman, `ubi9-init` registered and prepared like the VM (firewalld, logind) | The role does not run or is not idempotent (branch builds) | Drill 7; jenkins `staging` #5, registry `staging` #2 | Read the failing step and task in the console |
 | VM test | Molecule, Terraform, KVM | The same, on real RHEL 9: SELinux enforcing, firewalld on, packages from Red Hat (PR builds) | `PR-4` #2, green run only | Read the failing task in the console |
 | Release | git | — (`main` only): tags the PR's commit `v<VERSION>`; skips if the tag exists, or if the commit is not a PR merge | `v0.1.1` from `main` #9; skip on #8 | 403 on push: the token needs Contents write |
 
@@ -61,7 +61,8 @@ After every branch and PR build, `post` removes any container or VM left by an a
 | Path | Holds |
 | --- | --- |
 | `Jenkinsfile` | The pipeline, for every role |
-| `ci/molecule/default/` | Container test scenario, copied into every branch build |
+| `ci/molecule/shared/` | `site.yml` (runs the role), Red Hat register and unregister, used by both tests |
+| `ci/molecule/container/` | Container test scenario, copied into every branch build |
 | `ci/molecule/vm/` | VM test scenario and its Terraform, copied into PR builds |
 | `ci/requirements-tools.txt` | Pinned ansible-core 2.16, ansible-lint, yamllint, Molecule (`/opt/ci`) |
 | `ci/requirements-checkov.txt` | Pinned Checkov (`/opt/checkov`, own venv: its pins clash with the tools above) |

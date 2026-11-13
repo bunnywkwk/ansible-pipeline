@@ -45,15 +45,3 @@ variable "ssh_public_key" {
   type    = string
   default = ""
 }
-
-variable "rhsm_org" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "rhsm_activation_key" {
-  type      = string
-  sensitive = true
-  default   = ""
-}

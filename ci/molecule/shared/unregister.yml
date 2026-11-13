@@ -1,0 +1,16 @@
+---
+# Both scenarios, before every destroy (also `molecule destroy` after an
+# abort), so no test host stays registered in the Red Hat console.
+- name: Unregister from Red Hat
+  hosts: all
+  gather_facts: false
+  tasks:
+    # Best effort: a host that never registered, or is gone, must
+    # not stop its own removal.
+    - name: Unregister | subscription-manager unregister
+      ansible.builtin.command:
+        argv: [subscription-manager, unregister]
+      register: unregister_result
+      changed_when: unregister_result.rc == 0
+      failed_when: false
+      ignore_unreachable: true

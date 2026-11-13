@@ -74,7 +74,7 @@ pipeline {
         }
 
         // The test scenarios come from this repo, so a role needs only its code, and a role branch cannot weaken them.
-        // After YAML lint (they are ours to lint), before Ansible lint (which must see converge.yml to read the role's tasks).
+        // After YAML lint (they are ours to lint), before Ansible lint (which must see site.yml to read the role's tasks).
         stage('Test setup') {
           steps {
             dir('.pipeline') {
@@ -87,10 +87,23 @@ pipeline {
               rm -rf .pipeline
               [ -n "$CHANGE_ID" ] || rm -rf molecule/vm     # the VM scenario is for PR builds only
               ROLE=$(python -c "import yaml; g = yaml.safe_load(open('meta/main.yml'))['galaxy_info']; print(g['namespace'] + '.' + g['role_name'])")
-              sed -i "s/ROLE_FQCN/$ROLE/" molecule/default/converge.yml
-              mkdir molecule/default/vars       # a vars/ folder, so ansible-lint does not read it as a playbook
-              if [ -f ci-container-vars.yml ]; then cp ci-container-vars.yml molecule/default/vars/container.yml
-              else printf -- '---\n{}\n' > molecule/default/vars/container.yml; fi
+              # The role's own ci/ folder, every file optional (docs/ci/onboarding-a-role.md):
+              #   ci/site.yml                   its play instead of ours; hosts: all, the test host is the only target
+              #   ci/group_vars/all.yml         site variables, both tests
+              #   ci/group_vars/container.yml   container test only (the platform is in group container)
+              #   ci/group_vars/vm.yml          VM test only (group vm)
+              # Ansible loads group_vars/ next to the play by itself.
+              if [ -f ci/site.yml ]; then
+                python -c "import yaml, sys; b = [p.get('hosts') for p in yaml.safe_load(open('ci/site.yml')) or [] if p.get('hosts') != 'all']; sys.exit('ci/site.yml: every play must use hosts: all, found %s' % b if b else 0)"
+                cp ci/site.yml molecule/shared/site.yml
+                echo "Play: ci/site.yml"
+              fi
+              sed -i "s/ROLE_FQCN/$ROLE/" molecule/shared/site.yml
+              [ ! -d ci/group_vars ] || { cp -r ci/group_vars molecule/shared/group_vars; echo "Site variables: ci/group_vars"; }
+              # shortcut: old root file, kept until ansible-role-webserver moves it to ci/group_vars/container.yml
+              if [ -f ci-container-vars.yml ] && [ ! -f molecule/shared/group_vars/container.yml ]; then
+                mkdir -p molecule/shared/group_vars && cp ci-container-vars.yml molecule/shared/group_vars/container.yml
+              fi
               echo "Testing role $ROLE"
             '''
           }
@@ -124,14 +137,18 @@ pipeline {
     stage('Molecule') {
       when { allOf { not { branch 'main' }; not { changeRequest() } } }
       steps {
+        // The container registers with Red Hat (shared/register.yml), so it gets the same repos as the VM.
+        withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
+                         string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
         sh '''
           . /opt/ci/bin/activate
           # Jenkins runs as a system service: rootless podman needs the user's runtime dir and bus.
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
           export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
           molecule --version | grep -E '^molecule|ansible:'
-          molecule test -s default
+          molecule test -s container
         '''
+        }
       }
     }
 
@@ -139,9 +156,9 @@ pipeline {
     stage('VM test') {
       when { changeRequest() }
       steps {
-        // The VM registers with Red Hat through cloud-init, so the role's dnf tasks have packages.
-        withCredentials([string(credentialsId: 'rhsm-org', variable: 'TF_VAR_rhsm_org'),
-                         string(credentialsId: 'rhsm-activation-key', variable: 'TF_VAR_rhsm_activation_key')]) {
+        // The VM registers with Red Hat (shared/register.yml), like the container, so the role's dnf tasks have packages.
+        withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
+                         string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
           sh '''
             . /opt/ci/bin/activate
             terraform version | head -1

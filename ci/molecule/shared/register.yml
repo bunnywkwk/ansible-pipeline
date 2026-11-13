@@ -1,0 +1,38 @@
+---
+# Both scenarios, before converge: registers the host with Red Hat (Jenkins
+# credentials rhsm-org, rhsm-activation-key), so the role's dnf tasks get
+# the RHEL repos. The golden image and UBI come unregistered.
+- name: Register with Red Hat
+  hosts: all
+  gather_facts: false
+  vars:
+    register_org: "{{ lookup('ansible.builtin.env', 'RHSM_ORG') }}"
+    register_key: "{{ lookup('ansible.builtin.env', 'RHSM_ACTIVATION_KEY') }}"
+  tasks:
+    - name: Register | Red Hat registration is set
+      ansible.builtin.assert:
+        that:
+          - register_org | length > 0
+          - register_key | length > 0
+        fail_msg: >-
+          Set RHSM_ORG and RHSM_ACTIVATION_KEY (Jenkins credentials
+          rhsm-org, rhsm-activation-key).
+        quiet: true
+
+    # Already on the VM; UBI images lack it.
+    - name: Register | Install subscription-manager
+      ansible.builtin.dnf:
+        name: subscription-manager
+        state: present
+
+    - name: Register | subscription-manager register
+      ansible.builtin.command:
+        argv:
+          - subscription-manager
+          - register
+          - --org
+          - "{{ register_org }}"
+          - --activationkey
+          - "{{ register_key }}"
+        creates: /etc/pki/consumer/cert.pem
+      no_log: true
