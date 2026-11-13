@@ -17,6 +17,7 @@ ansible-role-<name>/
 ├── handlers/main.yml        # if needed
 ├── templates/               # if needed
 ├── requirements.yml         # only if the role uses collections
+├── ci/                      # optional: your test play and site variables (section 2)
 ├── VERSION                  # X.Y.Z, e.g. 0.1.0
 └── README.md
 ```
@@ -44,12 +45,27 @@ The pipeline reads that name and runs your role under it. A `meta/main.yml` with
 
 **`requirements.yml`** — every collection the role uses; no collections, no file. CI starts from an empty collection set; a missing entry fails the test there even if it passes on your machine.
 
-**Optional: `ci-container-vars.yml`** in the repo root, if your role's defaults need something a container lacks. It is used in the container test only; the VM test runs your real defaults.
+**Optional: a `ci/` folder**, to run the role like a real site. Without it, the tests run your role with its defaults.
+
+```text
+ci/
+├── site.yml                 # your play, used instead of the pipeline's; every play must be hosts: all
+└── group_vars/
+    ├── all.yml              # site variables, both tests
+    ├── container.yml        # container test only (branch builds)
+    └── vm.yml               # VM test only (pull requests)
+```
 
 ```yaml
+# ci/site.yml: name the role in full, as in meta/main.yml
 ---
-webserver_manage_firewall: false
+- name: Deploy like a site
+  hosts: all
+  roles:
+    - role: bunnywkwk.registry
 ```
+
+Each file is optional. The test host is in group `container` or `vm`, so the usual rule applies: the group file wins over `all.yml`, and both win over your `defaults/`. `hosts: all` is checked at `Test setup`: the test host is the only target.
 
 **Optional:** a `.yamllint`, `.ansible-lint`, `.gitleaks.toml` or `.checkov.yml` in the repo root changes that tool's rules for your role only. Without one, the tool's defaults apply.
 

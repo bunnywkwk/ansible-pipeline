@@ -7,6 +7,8 @@ driver:
 platforms:
   - name: role-ubi9-${MOLECULE_RUN_ID:-local}
     image: registry.access.redhat.com/ubi9/ubi-init:latest
+    # The role's ci/group_vars/container.yml applies to this group only.
+    groups: [container]
     pre_build_image: true
     command: /usr/sbin/init
     # Mounts /run, /tmp and a writable /sys/fs/cgroup:
@@ -22,14 +24,9 @@ platforms:
       SMDEV_CONTAINER_OFF: "1"
 provisioner:
   name: ansible
-  # Switches for what containers lack, from the role's optional
-  # ci-container-vars.yml. Not used on the VM: a real host needs none.
-  ansible_args:
-    - -e
-    - "@${MOLECULE_SCENARIO_DIRECTORY}/vars/container.yml"
   playbooks:
     # Shared with the VM test. prepare.yml adds the container steps.
-    converge: ../shared/converge.yml
+    converge: ../shared/site.yml
     cleanup: ../shared/unregister.yml
 scenario:
   test_sequence:

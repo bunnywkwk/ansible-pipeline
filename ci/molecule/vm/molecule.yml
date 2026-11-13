@@ -1,13 +1,15 @@
 ---
 # Pull request test on a real RHEL 9 VM: firewalld on, SELinux enforcing, packages from Red Hat.
 # Kept here, not in role repos: the pipeline copies it to molecule/vm in PR builds.
-# Runs the role with its own defaults; proves it runs and is idempotent on a real host.
+# Runs the role's play and site variables (or its defaults); proves it runs and is idempotent on a real host.
 driver:
   name: default
   options:
     managed: true
 platforms:
   - name: "role-vm-${MOLECULE_RUN_ID:-local}"
+    # The role's ci/group_vars/vm.yml applies to this group only.
+    groups: [vm]
 provisioner:
   name: ansible
   playbooks:
@@ -15,7 +17,7 @@ provisioner:
     destroy: destroy.yml
     # Shared with the container test: same converge, Red Hat register and unregister.
     # No container steps: the VM already is the golden image.
-    converge: ../shared/converge.yml
+    converge: ../shared/site.yml
     prepare: ../shared/register.yml
     cleanup: ../shared/unregister.yml
 scenario:

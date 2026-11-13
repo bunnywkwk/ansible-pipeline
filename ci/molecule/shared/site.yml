@@ -1,0 +1,10 @@
+---
+# The pipeline's play, used when the role has no ci/site.yml. ROLE_FQCN is
+# replaced with <namespace>.<role_name> from the role's meta/main.yml. Static import, so ansible-lint also reads its tasks.
+- name: Converge
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run the role from this checkout
+      ansible.builtin.import_role:
+        name: ROLE_FQCN

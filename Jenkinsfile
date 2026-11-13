@@ -74,7 +74,7 @@ pipeline {
         }
 
         // The test scenarios come from this repo, so a role needs only its code, and a role branch cannot weaken them.
-        // After YAML lint (they are ours to lint), before Ansible lint (which must see converge.yml to read the role's tasks).
+        // After YAML lint (they are ours to lint), before Ansible lint (which must see site.yml to read the role's tasks).
         stage('Test setup') {
           steps {
             dir('.pipeline') {
@@ -88,10 +88,23 @@ pipeline {
               rm -rf .pipeline
               [ -n "$CHANGE_ID" ] || rm -rf molecule/vm     # the VM scenario is for PR builds only
               ROLE=$(python -c "import yaml; g = yaml.safe_load(open('meta/main.yml'))['galaxy_info']; print(g['namespace'] + '.' + g['role_name'])")
-              sed -i "s/ROLE_FQCN/$ROLE/" molecule/shared/converge.yml
-              mkdir molecule/default/vars       # a vars/ folder, so ansible-lint does not read it as a playbook
-              if [ -f ci-container-vars.yml ]; then cp ci-container-vars.yml molecule/default/vars/container.yml
-              else printf -- '---\n{}\n' > molecule/default/vars/container.yml; fi
+              # The role's own ci/ folder, every file optional (docs/ci/onboarding-a-role.md):
+              #   ci/site.yml                   its play instead of ours; hosts: all, the test host is the only target
+              #   ci/group_vars/all.yml         site variables, both tests
+              #   ci/group_vars/container.yml   container test only (the platform is in group container)
+              #   ci/group_vars/vm.yml          VM test only (group vm)
+              # Ansible loads group_vars/ next to the play by itself.
+              if [ -f ci/site.yml ]; then
+                python -c "import yaml, sys; b = [p.get('hosts') for p in yaml.safe_load(open('ci/site.yml')) or [] if p.get('hosts') != 'all']; sys.exit('ci/site.yml: every play must use hosts: all, found %s' % b if b else 0)"
+                cp ci/site.yml molecule/shared/site.yml
+                echo "Play: ci/site.yml"
+              fi
+              sed -i "s/ROLE_FQCN/$ROLE/" molecule/shared/site.yml
+              [ ! -d ci/group_vars ] || { cp -r ci/group_vars molecule/shared/group_vars; echo "Site variables: ci/group_vars"; }
+              # shortcut: old root file, kept until ansible-role-webserver moves it to ci/group_vars/container.yml
+              if [ -f ci-container-vars.yml ] && [ ! -f molecule/shared/group_vars/container.yml ]; then
+                mkdir -p molecule/shared/group_vars && cp ci-container-vars.yml molecule/shared/group_vars/container.yml
+              fi
               echo "Testing role $ROLE"
             '''
           }
@@ -134,7 +147,7 @@ pipeline {
           export XDG_RUNTIME_DIR=/run/user/$(id -u)
           export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
           molecule --version | grep -E '^molecule|ansible:'
-          molecule test -s default
+          molecule test -s container
         '''
         }
       }
