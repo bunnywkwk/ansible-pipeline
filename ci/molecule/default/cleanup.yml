@@ -1,0 +1,16 @@
+---
+# Runs before every destroy, also `molecule destroy` after an abort, so
+# no test container stays registered in the Red Hat console.
+- name: Cleanup
+  hosts: all
+  gather_facts: false
+  tasks:
+    # Best effort: a container that never registered, or is gone, must
+    # not stop its own removal.
+    - name: Cleanup | Unregister from Red Hat
+      ansible.builtin.command:
+        argv: [subscription-manager, unregister]
+      register: cleanup_unregister
+      changed_when: cleanup_unregister.rc == 0
+      failed_when: false
+      ignore_unreachable: true

@@ -78,7 +78,8 @@ pipeline {
         stage('Test setup') {
           steps {
             dir('.pipeline') {
-              git url: 'https://github.com/bunnywkwk/ansible-pipeline.git', branch: 'main', changelog: false, poll: false
+              // TEST ONLY: set back to 'main' before merging container-prepare.
+              git url: 'https://github.com/bunnywkwk/ansible-pipeline.git', branch: 'container-prepare', changelog: false, poll: false
             }
             sh '''
               . /opt/ci/bin/activate
@@ -124,6 +125,9 @@ pipeline {
     stage('Molecule') {
       when { allOf { not { branch 'main' }; not { changeRequest() } } }
       steps {
+        // The container registers with Red Hat in prepare.yml, so it gets the same repos as the VM.
+        withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
+                         string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
         sh '''
           . /opt/ci/bin/activate
           # Jenkins runs as a system service: rootless podman needs the user's runtime dir and bus.
@@ -132,6 +136,7 @@ pipeline {
           molecule --version | grep -E '^molecule|ansible:'
           molecule test -s default
         '''
+        }
       }
     }
 

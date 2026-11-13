@@ -9,7 +9,17 @@ platforms:
     image: registry.access.redhat.com/ubi9/ubi-init:latest
     pre_build_image: true
     command: /usr/sbin/init
+    # Mounts /run, /tmp and a writable /sys/fs/cgroup:
+    # lockdown's extra Docker lines are not needed here.
     systemd: always
+    # All capabilities inside the container, as in ansible-lockdown's
+    # scenario, so logind and firewalld can start. Rootless: the
+    # container gets no more than the jenkins user has on the host.
+    privileged: true
+    env:
+      # subscription-manager refuses to run in a container without it
+      # (prepare.yml registers, so dnf gets the full RHEL repos).
+      SMDEV_CONTAINER_OFF: "1"
 provisioner:
   name: ansible
   # Switches for what containers lack, from the role's optional
@@ -23,6 +33,8 @@ scenario:
     - dependency
     - destroy
     - create
+    - prepare
     - converge
     - idempotence
+    - cleanup
     - destroy
