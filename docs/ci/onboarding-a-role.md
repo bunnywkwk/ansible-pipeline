@@ -94,6 +94,12 @@ Three one-time steps, no pipeline change ([setup guide](setup-guide.md), "Adding
 2. Open a pull request to `main`: Jenkins runs the gates and the role on a real RHEL 9 VM. `continuous-integration/jenkins/pr-head` must be green, with the branch up to date, before it can merge.
 3. Red? Open the build's console (link on the ✗). The failed stage says what to fix; see the gate table in the [README](../../README.md#gates).
 
+Both tests run your role the same way, with your `ci/` settings; only the machine differs:
+
+![Six steps: make the machine, register with Red Hat, set the container up like a real server, run the role, run it again (nothing may change), unregister and delete. Only steps 1 and 3 differ between the container and the VM.](inside-a-test.svg)
+
+In the PR console, look for `== Run 1`, `== Run 2` and `Idempotence: changed=0`.
+
 ## 6. Release
 
 Change `VERSION` (e.g. `0.1.0` → `0.2.0`) in the pull request. After the merge, the `main` build tags `v0.2.0` on the tested commit. A merge without a `VERSION` change releases nothing (`release skipped`). Released tags cannot be moved or deleted.

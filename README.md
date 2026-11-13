@@ -18,7 +18,34 @@ Central CI for Ansible roles. A role repo holds only role code. Jenkins brings t
 
 A branch with an open PR builds as the PR only. `main` needs no tests: the PR must be green and up to date, so it merges exactly what was tested.
 
+### Where things come from
+
+![Your role repo gives the code and, if you want, its own play and settings; ansible-pipeline gives the recipe and the tests; Jenkins joins them and tests a branch in a container, a pull request on a fresh real RHEL 9 VM.](docs/ci/where-things-come-from.svg)
+
 The pipeline never names a role: Jenkins fills `scm` with the role, branch and commit being built, so the same file serves every role.
+
+### Inside a test
+
+![Six steps: make the machine, register with Red Hat, set the container up like a real server, run the role, run it again (nothing may change), unregister and delete. Only steps 1 and 3 differ between the container and the VM.](docs/ci/inside-a-test.svg)
+
+| | Container test (branch) | VM test (pull request) |
+| --- | --- | --- |
+| Driven by | Molecule (`ci/molecule/container/`) | `ansible-playbook`, like ansible-lockdown (`ci/molecule/vm/vm-test.sh`) |
+| Machine | Podman, `ubi9-init`, privileged | Terraform, a fresh copy of the RHEL 9 golden image |
+| Same files | `shared/register.yml`, `shared/site.yml`, `shared/unregister.yml` | The same |
+
+### Your role's settings: the `ci/` folder
+
+Optional, in the role repo. The pipeline looks for these exact names:
+
+| File | Used in |
+| --- | --- |
+| `ci/site.yml` | Both tests: your play instead of the pipeline's (every play `hosts: all`) |
+| `ci/group_vars/all.yml` | Both tests |
+| `ci/group_vars/container.yml` | Container test only |
+| `ci/group_vars/vm.yml` | VM test only |
+
+No `ci/` folder: the role runs with its own defaults. Details and an example: [onboarding](docs/ci/onboarding-a-role.md#2-files-the-pipeline-depends-on).
 
 ## Gates
 
