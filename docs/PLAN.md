@@ -82,6 +82,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
 | 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Done (2026-11-09); VM-only failure and red/aborted cleanup not run, at your request |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Done (2026-11-10); `Jenkinsfile` change reaching both roles waits for the next real change |
+| 5b — Container like the VM | CI | Real roles pass the container test; roles bring their own play and site variables | Registered, prepared container; `ci/` folder in the role; scenarios `container`, `vm`, `shared` | Done (2026-11-13); VM path with `shared/register.yml` and a role `ci/` folder not yet run in Jenkins |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
 | 8 — CD job | CD | Staging → approval → production in one Jenkins job | `cd/deploy-webserver` job + deploy records | Not started |
@@ -333,6 +334,25 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 - Following only `docs/ci/onboarding-a-role.md`, a new role reaches a green build.
 
 **CI is done here.** Its output for CD: role tags `v<VERSION>` that passed every gate.
+
+## Batch 5b — Container test like the VM
+
+**Why (2026-11-11):** `ansible-role-jenkins` failed the container test at `loginctl enable-linger`, a task that works on a VM. The `branch-gates-only` idea (no container test) was dropped for ansible-lockdown's approach: make the container close to the real host before the role runs.
+
+**Steps**
+
+- [x] Container: `privileged: true` (Podman's systemd mode already mounts what lockdown adds by hand for Docker).
+- [x] `prepare`: register with Red Hat (UBI has no firewalld), install what a RHEL minimal install has, start firewalld and logind (`ubi-init` masks it). `cleanup`: unregister.
+- [x] VM: registers in the same `shared/register.yml` instead of cloud-init, so the key is no longer in Terraform state or the cloud-init disk.
+- [x] Layout: `ci/molecule/shared/` (`site.yml`, register, unregister), `container/`, `vm/`.
+- [x] Role `ci/` folder, all optional: `site.yml` (its play, `hosts: all` checked), `group_vars/all.yml`, `container.yml`, `vm.yml`. Root `ci-container-vars.yml` still read until webserver moves it.
+- Changed 2026-11-13: kept Molecule for the PR test instead of a plain `ansible-playbook` run like lockdown's: it gives idempotence and cleanup for free, and a role's own play runs through `ci/site.yml`.
+
+**Done when**
+
+- `ansible-role-jenkins` and `ansible-role-registry` pass the container test with nothing added to the role: passed (jenkins `staging` #5, registry `staging` #2).
+- A PR passes the VM test with `shared/register.yml`: not yet run.
+
 
 ## Batch 6 — Lab VMs with Terraform (CD starts here)
 

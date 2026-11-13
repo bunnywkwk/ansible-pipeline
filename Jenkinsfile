@@ -78,8 +78,7 @@ pipeline {
         stage('Test setup') {
           steps {
             dir('.pipeline') {
-              // TEST ONLY: set back to 'main' before merging container-prepare.
-              git url: 'https://github.com/bunnywkwk/ansible-pipeline.git', branch: 'container-prepare', changelog: false, poll: false
+              git url: 'https://github.com/bunnywkwk/ansible-pipeline.git', branch: 'main', changelog: false, poll: false
             }
             sh '''
               . /opt/ci/bin/activate
