@@ -180,7 +180,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 44. **Push `Jenkinsfile` and `ci/molecule/`:** the pipeline follows the event table in the README and copies the tests into each build.
 45. **Job → Branch Sources → delete "Discover pull requests from forks":** a fork's role code would otherwise run on this host.
 46. **Role ruleset on `main` → Allowed merge methods: Merge only:** Release tags only PR merge commits; squash has one parent and would never release.
-47. **Open a PR:** the console shows Terraform apply, `SELinux is enforcing`, converge, idempotence `changed=0`, destroy; `virsh list --all` then shows no `role-vm-*`.
+47. **Open a PR:** the console shows Terraform apply, the SSH and cloud-init wait, register, `== Run 1`, `== Run 2`, `Idempotence: changed=0`, unregister, destroy; `virsh list --all` then shows no `role-vm-*`. (Changed 2026-11-13: plain `ansible-playbook`, no Molecule, in `ci/molecule/vm/vm-test.sh`.)
 
 ## Adding another role repo
 

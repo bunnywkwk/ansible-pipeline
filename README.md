@@ -1,6 +1,6 @@
 # ansible-pipeline
 
-Central CI for Ansible roles. A role repo holds only role code. Jenkins brings the pipeline and the Molecule tests from this repo, tests every branch and pull request, runs pull requests on a real RHEL 9 VM, and tags releases from `main`.
+Central CI for Ansible roles. A role repo holds only role code. Jenkins brings the pipeline and the tests from this repo, tests every branch and pull request, runs pull requests on a real RHEL 9 VM, and tags releases from `main`.
 
 - **For role authors:** [docs/ci/onboarding-a-role.md](docs/ci/onboarding-a-role.md) — what your repo needs and how to get it built.
 - **For the Jenkins admin:** [docs/ci/setup-guide.md](docs/ci/setup-guide.md) — build this CI from scratch, one line per step.
@@ -32,10 +32,10 @@ Gates 1–5 run on branches and PRs, cheapest first; the first red stage stops t
 | Ansible lint | ansible-lint 26.11.0, profile `production` | Unknown modules, bad Ansible practice (`shell` for a package, no `changed_when`) | Drills 2 and 3 | Read the rule name; its docs link explains the fix |
 | Security | Checkov 3.4.3 | Insecure settings such as `validate_certs: false` | Drill 5 | Fix the setting; skip only with a reason inside the task (`# checkov:skip=ID: reason`) |
 | Container test | Molecule 26.9.0, Podman, `ubi9-init` registered and prepared like the VM (firewalld, logind) | The role does not run or is not idempotent (branch builds) | Drill 7; jenkins `staging` #5, registry `staging` #2 | Read the failing step and task in the console |
-| VM test | Molecule, Terraform, KVM | The same, on real RHEL 9: SELinux enforcing, firewalld on, packages from Red Hat (PR builds) | `PR-4` #2, green run only | Read the failing task in the console |
+| VM test | Terraform, KVM, `ansible-playbook` (run twice) | The same, on real RHEL 9: SELinux enforcing, firewalld on, packages from Red Hat (PR builds) | `PR-4` #2, green run only | Read the failing task in the console |
 | Release | git | — (`main` only): tags the PR's commit `v<VERSION>`; skips if the tag exists, or if the commit is not a PR merge | `v0.1.1` from `main` #9; skip on #8 | 403 on push: the token needs Contents write |
 
-Molecule only proves the role runs and is idempotent: there is no verify step for now. Checking what the role does belongs to a separate audit.
+The tests only prove the role runs and is idempotent: there is no verify step for now. Checking what the role does belongs to a separate audit.
 
 After every branch and PR build, `post` removes any container or VM left by an abort and archives `reports/` (gitleaks and ansible-lint SARIF, Checkov JUnit XML).
 
@@ -63,7 +63,7 @@ After every branch and PR build, `post` removes any container or VM left by an a
 | `Jenkinsfile` | The pipeline, for every role |
 | `ci/molecule/shared/` | `site.yml` (runs the role), Red Hat register and unregister, used by both tests |
 | `ci/molecule/container/` | Container test scenario, copied into every branch build |
-| `ci/molecule/vm/` | VM test scenario and its Terraform, copied into PR builds |
+| `ci/molecule/vm/` | VM test: `vm-test.sh` (Terraform, then `ansible-playbook`) and its Terraform; copied into PR builds |
 | `ci/requirements-tools.txt` | Pinned ansible-core 2.16, ansible-lint, yamllint, Molecule (`/opt/ci`) |
 | `ci/requirements-checkov.txt` | Pinned Checkov (`/opt/checkov`, own venv: its pins clash with the tools above) |
 | `docs/` | Plan, setup guide, onboarding, evidence, troubleshooting |

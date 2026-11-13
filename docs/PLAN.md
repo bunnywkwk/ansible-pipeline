@@ -346,12 +346,12 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 - [x] VM: registers in the same `shared/register.yml` instead of cloud-init, so the key is no longer in Terraform state or the cloud-init disk.
 - [x] Layout: `ci/molecule/shared/` (`site.yml`, register, unregister), `container/`, `vm/`.
 - [x] Role `ci/` folder, all optional: `site.yml` (its play, `hosts: all` checked), `group_vars/all.yml`, `container.yml`, `vm.yml`. Root `ci-container-vars.yml` still read until webserver moves it.
-- Changed 2026-11-13: kept Molecule for the PR test instead of a plain `ansible-playbook` run like lockdown's: it gives idempotence and cleanup for free, and a role's own play runs through `ci/site.yml`.
+- Changed 2026-11-13, at your request: the PR test drops Molecule for lockdown's way: Terraform makes the VM, `ansible-playbook` runs the role's play (`ci/site.yml` or ours) twice, the second must report `changed=0` (`ci/molecule/vm/vm-test.sh`). Unregister and `terraform destroy` run in the script and in Jenkins `post`. The container test keeps Molecule.
 
 **Done when**
 
 - `ansible-role-jenkins` and `ansible-role-registry` pass the container test with nothing added to the role: passed (jenkins `staging` #5, registry `staging` #2).
-- A PR passes the VM test with `shared/register.yml`: not yet run.
+- A PR passes the VM test with `vm-test.sh` (plain `ansible-playbook`): not yet run.
 
 
 ## Batch 6 — Lab VMs with Terraform (CD starts here)

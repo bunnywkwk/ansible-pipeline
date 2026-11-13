@@ -152,7 +152,8 @@ pipeline {
       }
     }
 
-    // PR only: the role on a real RHEL 9 VM, from the scenario in ci/molecule/vm.
+    // PR only: the role on a real RHEL 9 VM, like ansible-lockdown: Terraform makes it, ansible-playbook runs the
+    // role's play twice (ci/molecule/vm/vm-test.sh). No Molecule here.
     stage('VM test') {
       when { changeRequest() }
       steps {
@@ -162,7 +163,7 @@ pipeline {
           sh '''
             . /opt/ci/bin/activate
             terraform version | head -1
-            molecule test -s vm
+            bash molecule/vm/vm-test.sh test
           '''
         }
       }
@@ -196,12 +197,13 @@ pipeline {
 
   post {
     always {
-      // molecule test removes its container or VM; this covers an abort or a timeout mid-run.
+      // The tests remove their container or VM; this covers a failure, an abort or a timeout mid-run.
       sh '''
         . /opt/ci/bin/activate
         export XDG_RUNTIME_DIR=/run/user/$(id -u)
         export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
         if [ "$BRANCH_NAME" != main ] && [ -d molecule ]; then molecule destroy --all || true; fi
+        if [ -f molecule/vm/vm-test.sh ]; then bash molecule/vm/vm-test.sh destroy || true; fi
       '''
       archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
     }
