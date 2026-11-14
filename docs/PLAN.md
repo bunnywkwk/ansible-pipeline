@@ -29,7 +29,7 @@ A lab of a full Ansible role delivery pipeline on Jenkins, built **CI first**. C
 | Tools | `/opt/ci` (Python 3.11, ansible-core 2.16) from `ci/requirements-tools.txt`, `/opt/checkov` (Python 3.11) from `ci/requirements-checkov.txt`, gitleaks 8.30.1 binary (checksum verified) | Pinned versions in the repo; Checkov is kept apart because of its dependency pins |
 | Security scanner | Checkov (`--framework ansible`) | Flags insecure task settings, such as `validate_certs: false` |
 | Secrets | Not handled in the lab | Only Jenkins' credentials store holds the GitHub token (`github-crendentials`) and, from Batch 6, the VM SSH key |
-| Test containers | `ubi9-init`, rootless Podman as `jenkins` | Closest container match to RHEL 9 for Molecule |
+| Test containers | Rocky Linux 9 `ubi-init` + RHEL 9 minimal install (`@core`), rootless Podman as `jenkins` | RHEL 9 rebuild with every package in public repos, as in ansible-lockdown (was `ubi9-init` until 2026-11-14) |
 | RHEL versions | 9 only | One Molecule scenario: `default` |
 | Example role | `ansible-role-webserver`: nginx, custom index page, firewall port; also the template for new roles | Gives a clear smoke test later: HTTP 200 with the expected text |
 | Release tags | `VERSION` file in the role repo; Jenkins tags `v<VERSION>` on a green `main` | To release, bump `VERSION` in the pull request |
@@ -82,7 +82,7 @@ Update the Status column as each batch finishes. A batch is Done only when every
 | 4 — Release and merge gate | CI | Green `main` produces a tag; red code cannot merge | Tag `v0.1.0`, GitHub rulesets | Done (2026-11-07); red-PR and tag-move checks not run, at your request |
 | 4b — PR test on a VM | CI | Every pull request also runs the role on a real RHEL 9 VM | Molecule `vm` scenario, one short-lived VM per build, required check | Done (2026-11-09); VM-only failure and red/aborted cleanup not run, at your request |
 | 5 — Any role, zero setup | CI | A second role gets CI without pipeline edits; CI docs done | Second role green, CI README and guides | Done (2026-11-10); `Jenkinsfile` change reaching both roles waits for the next real change |
-| 5b — Container like the VM | CI | Real roles pass the container test; roles bring their own play and site variables | Registered, prepared container; `ci/` folder in the role; scenarios `container`, `vm`, `shared` | Done (2026-11-13); VM path with `shared/register.yml` and a role `ci/` folder not yet run in Jenkins |
+| 5b — Container like the VM | CI | Real roles pass the container test; roles bring their own play and site variables | Rocky Linux 9 container with the RHEL 9 minimal install; `ci/` folder in the role; scenarios `container`, `vm`, `shared` | Done (2026-11-13); Rocky image, VM path and a role `ci/` folder not yet run in Jenkins |
 | 6 — Lab VMs | CD | Terraform creates VMs on demand from the golden image | `infra-lab` repo, `infra/lab-vm` job | Not started |
 | 7 — Deployment repo | CD | Config that says what goes where, checked on change | `deploy-webserver` repo | Not started |
 | 8 — CD job | CD | Staging → approval → production in one Jenkins job | `cd/deploy-webserver` job + deploy records | Not started |
@@ -346,6 +346,7 @@ Release tags only a PR merge commit (two parents), so a new repo's first commit 
 - [x] VM: registers in the same `shared/register.yml` instead of cloud-init, so the key is no longer in Terraform state or the cloud-init disk.
 - [x] Layout: `ci/molecule/shared/` (`site.yml`, register, unregister), `container/`, `vm/`.
 - [x] Role `ci/` folder, all optional: `site.yml` (its play, `hosts: all` checked), `group_vars/all.yml`, `container.yml`, `vm.yml`. Root `ci-container-vars.yml` still read until webserver moves it.
+- Changed 2026-11-14, at your request: the container is Rocky Linux 9 (lockdown's image), not UBI. Its public repos have every RHEL 9 package, so the container no longer registers: `prepare` installs `@core` (the golden image's minimal install, minus firmware), starts firewalld and logind. Register and unregister moved to `vm/`; the Molecule stage has no credentials.
 - Changed 2026-11-13, at your request: the PR test drops Molecule for lockdown's way: Terraform makes the VM, `ansible-playbook` runs the role's play (`ci/site.yml` or ours) twice, the second must report `changed=0` (`ci/molecule/vm/vm-test.sh`). Unregister and `terraform destroy` run in the script and in Jenkins `post`. The container test keeps Molecule.
 
 **Done when**

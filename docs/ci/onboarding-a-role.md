@@ -96,7 +96,7 @@ Three one-time steps, no pipeline change ([setup guide](setup-guide.md), "Adding
 
 Both tests run your role the same way, with your `ci/` settings; only the machine differs:
 
-![Six steps: make the machine, register with Red Hat, set the container up like a real server, run the role, run it again (nothing may change), unregister and delete. Only steps 1 and 3 differ between the container and the VM.](inside-a-test.svg)
+![Five steps: make the machine, set it up (the container gets the RHEL 9 minimal install, the VM registers with Red Hat), run the role, run it again (nothing may change), delete. Only steps 1 and 2 differ between the container and the VM.](inside-a-test.svg)
 
 In the PR console, look for `== Run 1`, `== Run 2` and `Idempotence: changed=0`.
 

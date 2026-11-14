@@ -5,8 +5,11 @@
 driver:
   name: podman
 platforms:
-  - name: role-ubi9-${MOLECULE_RUN_ID:-local}
-    image: registry.access.redhat.com/ubi9/ubi-init:latest
+  - name: role-el9-${MOLECULE_RUN_ID:-local}
+    # Rocky Linux 9 (a RHEL 9 rebuild, as in ansible-lockdown's scenario): its
+    # public repos have every RHEL 9 package, so no Red Hat registration. Quay,
+    # not Docker Hub: no pull limit.
+    image: quay.io/rockylinux/rockylinux:9-ubi-init
     # The role's ci/group_vars/container.yml applies to this group only.
     groups: [container]
     pre_build_image: true
@@ -18,16 +21,11 @@ platforms:
     # scenario, so logind and firewalld can start. Rootless: the
     # container gets no more than the jenkins user has on the host.
     privileged: true
-    env:
-      # subscription-manager refuses to run in a container without it
-      # (shared/register.yml, so dnf gets the full RHEL repos).
-      SMDEV_CONTAINER_OFF: "1"
 provisioner:
   name: ansible
   playbooks:
-    # Shared with the VM test. prepare.yml adds the container steps.
+    # Shared with the VM test; prepare.yml makes the OS the same as the VM.
     converge: ../shared/site.yml
-    cleanup: ../shared/unregister.yml
 scenario:
   test_sequence:
     # Installs the podman driver's own collection on a clean node.
@@ -37,5 +35,4 @@ scenario:
     - prepare
     - converge
     - idempotence
-    - cleanup
     - destroy

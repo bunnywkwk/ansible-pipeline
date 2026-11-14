@@ -373,7 +373,8 @@ Finished: SUCCESS
 | Done-when check | Result |
 | --- | --- |
 | jenkins and registry green in the container with nothing added to the role | Passed (#5, #2) |
-| PR VM test with `shared/register.yml` | Not run yet |
+| PR VM test with `vm/register.yml` | Not run yet |
+| Container test on Rocky Linux 9 with `@core`, no registration | Not run yet |
 | A role `ci/` folder (`site.yml`, `group_vars`) in Jenkins | Not run yet; local dry run only: `Play: ci/site.yml`, `Site variables: ci/group_vars`, container got `container.yml`, VM got `vm.yml` |
 | The registry answers on port 5000 | Not checked: no verify step |
 

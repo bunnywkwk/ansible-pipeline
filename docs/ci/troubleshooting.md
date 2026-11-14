@@ -168,5 +168,7 @@ TASK [bunnywkwk.jenkins : PODMAN | Enable linger for jenkins]
 
 **Seen** (2026-11-13, checking the public UBI 9 repo metadata before writing `prepare.yml`): `firewalld`, `audit` and `chrony` are not in UBI 9 baseos or appstream. An unregistered `ubi9-init` cannot install them.
 
-**Fix:** the container registers with Red Hat first (`shared/register.yml`, Jenkins credentials `rhsm-org`, `rhsm-activation-key`; `SMDEV_CONTAINER_OFF=1` lets `subscription-manager` run in a container). `cleanup` unregisters, also after an abort.
+**Fix:** the container registered with Red Hat first. Changed 2026-11-14: the image is Rocky Linux 9 (`quay.io/rockylinux/rockylinux:9-ubi-init`, as in ansible-lockdown); its public repos have every RHEL 9 package, so no registration. `prepare.yml` installs group `@core`, the golden image's minimal install.
+
+**Prevention:** before picking a test image, check its public repos have the packages a real host has.
 

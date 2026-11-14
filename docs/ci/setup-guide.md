@@ -176,7 +176,7 @@ git push (role repo) → GitHub webhook → smee.io → smee client → Jenkins 
 41. **Install on the host:** Terraform, Packer, KVM with libvirt, `genisoimage`; `jenkins` in group `libvirt`.
 41b. **Put Terraform's libvirt plugin on the node:** in `ci/molecule/vm/terraform` run `terraform init`, then `sudo mkdir -p /opt/ci/terraform-plugins/registry.terraform.io/dmacvicar/libvirt/0.8.3` and `sudo cp -rL .terraform/providers/registry.terraform.io/dmacvicar/libvirt/0.8.3/linux_amd64 /opt/ci/terraform-plugins/registry.terraform.io/dmacvicar/libvirt/0.8.3/`. Builds use this copy, not a download; the lock file still checks it.
 42. **Build the golden image and put it in pool `ci`:** `~/ansible-cis/docs/local-laptop/updated-doc-setup/golden-image-rhel9.md`, steps 1–4. Plain RHEL 9.8; every test VM is a throwaway copy of it.
-43. **Jenkins credentials `rhsm-org`, `rhsm-activation-key`** (Secret text): the VM and the container register with Red Hat in `ci/molecule/shared/register.yml`, to install packages.
+43. **Jenkins credentials `rhsm-org`, `rhsm-activation-key`** (Secret text): the VM registers with Red Hat in `ci/molecule/vm/register.yml`, to install packages. The container needs none (Rocky Linux 9 public repos).
 44. **Push `Jenkinsfile` and `ci/molecule/`:** the pipeline follows the event table in the README and copies the tests into each build.
 45. **Job → Branch Sources → delete "Discover pull requests from forks":** a fork's role code would otherwise run on this host.
 46. **Role ruleset on `main` → Allowed merge methods: Merge only:** Release tags only PR merge commits; squash has one parent and would never release.

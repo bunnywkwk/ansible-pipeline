@@ -1,6 +1,6 @@
 ---
-# Both scenarios, before every destroy (also `molecule destroy` after an
-# abort), so no test host stays registered in the Red Hat console.
+# VM test, before every destroy (vm-test.sh destroy, also from Jenkins post),
+# so no test VM stays registered in the Red Hat console.
 - name: Unregister from Red Hat
   hosts: all
   gather_facts: false

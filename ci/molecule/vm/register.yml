@@ -1,7 +1,7 @@
 ---
-# Both scenarios, before converge: registers the host with Red Hat (Jenkins
+# VM test, before the play (vm-test.sh): registers the VM with Red Hat (Jenkins
 # credentials rhsm-org, rhsm-activation-key), so the role's dnf tasks get
-# the RHEL repos. The golden image and UBI come unregistered.
+# the RHEL repos. The golden image comes unregistered.
 - name: Register with Red Hat
   hosts: all
   gather_facts: false

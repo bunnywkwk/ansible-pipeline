@@ -137,9 +137,6 @@ pipeline {
     stage('Molecule') {
       when { allOf { not { branch 'main' }; not { changeRequest() } } }
       steps {
-        // The container registers with Red Hat (shared/register.yml), so it gets the same repos as the VM.
-        withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
-                         string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
         sh '''
           . /opt/ci/bin/activate
           # Jenkins runs as a system service: rootless podman needs the user's runtime dir and bus.
@@ -148,7 +145,6 @@ pipeline {
           molecule --version | grep -E '^molecule|ansible:'
           molecule test -s container
         '''
-        }
       }
     }
 
@@ -157,7 +153,7 @@ pipeline {
     stage('VM test') {
       when { changeRequest() }
       steps {
-        // The VM registers with Red Hat (shared/register.yml), like the container, so the role's dnf tasks have packages.
+        // The VM registers with Red Hat (vm/register.yml), so the role's dnf tasks have the RHEL repos.
         withCredentials([string(credentialsId: 'rhsm-org', variable: 'RHSM_ORG'),
                          string(credentialsId: 'rhsm-activation-key', variable: 'RHSM_ACTIVATION_KEY')]) {
           sh '''

@@ -15,7 +15,7 @@ INV="$DIR/hosts.ini"
 
 destroy() {
   # Best effort: a VM that never registered, or no longer answers, must not stop its removal.
-  [ ! -f "$INV" ] || ansible-playbook -i "$INV" "$SHARED/unregister.yml" || true
+  [ ! -f "$INV" ] || ansible-playbook -i "$INV" "$DIR/unregister.yml" || true
   "${TF[@]}" init -input=false -no-color >/dev/null
   "${TF[@]}" destroy -input=false -auto-approve -no-color "-var=run_id=$NAME"
   rm -f "$INV"
@@ -44,7 +44,7 @@ test_vm() {
   # terraform apply returns once the VM has an IP: wait for SSH, and for cloud-init (it adds the root key).
   ansible all -i "$INV" -m ansible.builtin.wait_for_connection -a timeout=600
   ansible all -i "$INV" -m ansible.builtin.command -a 'cloud-init status --wait'
-  ansible-playbook -i "$INV" "$SHARED/register.yml"
+  ansible-playbook -i "$INV" "$DIR/register.yml"
 
   echo "== Run 1: the role's play"
   ansible-playbook -i "$INV" "$SHARED/site.yml"

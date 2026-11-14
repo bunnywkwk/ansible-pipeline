@@ -1,27 +1,19 @@
 ---
 # Container test, before converge (like ansible-lockdown's prepare.yml):
-# register, then make the container close to the RHEL 9 golden image.
-# The VM scenario runs only ../shared/register.yml: it already is one.
-- name: Register with Red Hat
-  ansible.builtin.import_playbook: ../shared/register.yml
-
+# make the container the same OS as the VM, for any role.
 - name: Make the container look like the VM
   hosts: all
   gather_facts: false
   tasks:
-    # UBI has no firewalld: it comes from the RHEL repos after register.
-    - name: Prepare | Install what a RHEL 9 minimal install has
+    # The golden image kickstart installs @^minimal-environment, which is the
+    # core group. Firmware and microcode are for real hardware: the container
+    # runs on the host's kernel.
+    - name: Prepare | Install the RHEL 9 minimal install (group core)
       ansible.builtin.dnf:
-        name:
-          - firewalld
-          - openssh-server
-          - sudo
-          - iproute
-          - procps-ng
-          - hostname
-          - cronie
-          - policycoreutils-python-utils
-          - python3-libselinux
+        name: "@core"
+        exclude:
+          - "*-firmware"
+          - microcode_ctl
         state: present
 
     - name: Prepare | Start firewalld, as on the VM
@@ -30,7 +22,7 @@
         state: started
         enabled: true
 
-    # ubi-init masks logind; a VM runs it (loginctl, user sessions).
+    # The image masks logind; a VM runs it (loginctl, user sessions).
     - name: Prepare | Start systemd-logind, as on the VM
       ansible.builtin.systemd_service:
         name: systemd-logind

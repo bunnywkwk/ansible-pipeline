@@ -26,13 +26,13 @@ The pipeline never names a role: Jenkins fills `scm` with the role, branch and c
 
 ### Inside a test
 
-![Six steps: make the machine, register with Red Hat, set the container up like a real server, run the role, run it again (nothing may change), unregister and delete. Only steps 1 and 3 differ between the container and the VM.](docs/ci/inside-a-test.svg)
+![Five steps: make the machine, set it up (the container gets the RHEL 9 minimal install, the VM registers with Red Hat), run the role, run it again (nothing may change), delete. Only steps 1 and 2 differ between the container and the VM.](docs/ci/inside-a-test.svg)
 
 | | Container test (branch) | VM test (pull request) |
 | --- | --- | --- |
 | Driven by | Molecule (`ci/molecule/container/`) | `ansible-playbook`, like ansible-lockdown (`ci/molecule/vm/vm-test.sh`) |
-| Machine | Podman, `ubi9-init`, privileged | Terraform, a fresh copy of the RHEL 9 golden image |
-| Same files | `shared/register.yml`, `shared/site.yml`, `shared/unregister.yml` | The same |
+| Machine | Podman, Rocky Linux 9 (RHEL 9 rebuild), privileged, RHEL 9 minimal install added | Terraform, a fresh copy of the RHEL 9 golden image, registered with Red Hat |
+| Same file | `shared/site.yml` | The same |
 
 ### Your role's settings: the `ci/` folder
 
@@ -58,7 +58,7 @@ Gates 1–5 run on branches and PRs, cheapest first; the first red stage stops t
 | YAML lint | yamllint 1.38.0 | Broken YAML: indentation, syntax | Drill 1 | Fix the file and line printed (`file:line:col`) |
 | Ansible lint | ansible-lint 26.11.0, profile `production` | Unknown modules, bad Ansible practice (`shell` for a package, no `changed_when`) | Drills 2 and 3 | Read the rule name; its docs link explains the fix |
 | Security | Checkov 3.4.3 | Insecure settings such as `validate_certs: false` | Drill 5 | Fix the setting; skip only with a reason inside the task (`# checkov:skip=ID: reason`) |
-| Container test | Molecule 26.9.0, Podman, `ubi9-init` registered and prepared like the VM (firewalld, logind) | The role does not run or is not idempotent (branch builds) | Drill 7; jenkins `staging` #5, registry `staging` #2 | Read the failing step and task in the console |
+| Container test | Molecule 26.9.0, Podman, Rocky Linux 9 with the RHEL 9 minimal install, like the VM (firewalld, logind) | The role does not run or is not idempotent (branch builds) | Drill 7; jenkins `staging` #5, registry `staging` #2 | Read the failing step and task in the console |
 | VM test | Terraform, KVM, `ansible-playbook` (run twice) | The same, on real RHEL 9: SELinux enforcing, firewalld on, packages from Red Hat (PR builds) | `PR-4` #2, green run only | Read the failing task in the console |
 | Release | git | — (`main` only): tags the PR's commit `v<VERSION>`; skips if the tag exists, or if the commit is not a PR merge | `v0.1.1` from `main` #9; skip on #8 | 403 on push: the token needs Contents write |
 
@@ -88,9 +88,9 @@ After every branch and PR build, `post` removes any container or VM left by an a
 | Path | Holds |
 | --- | --- |
 | `Jenkinsfile` | The pipeline, for every role |
-| `ci/molecule/shared/` | `site.yml` (runs the role), Red Hat register and unregister, used by both tests |
+| `ci/molecule/shared/` | `site.yml` (runs the role), used by both tests |
 | `ci/molecule/container/` | Container test scenario, copied into every branch build |
-| `ci/molecule/vm/` | VM test: `vm-test.sh` (Terraform, then `ansible-playbook`) and its Terraform; copied into PR builds |
+| `ci/molecule/vm/` | VM test: `vm-test.sh` (Terraform, then `ansible-playbook`), Red Hat register and unregister, its Terraform; copied into PR builds |
 | `ci/requirements-tools.txt` | Pinned ansible-core 2.16, ansible-lint, yamllint, Molecule (`/opt/ci`) |
 | `ci/requirements-checkov.txt` | Pinned Checkov (`/opt/checkov`, own venv: its pins clash with the tools above) |
 | `docs/` | Plan, setup guide, onboarding, evidence, troubleshooting |
